@@ -1,0 +1,1479 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>shell00.lab — salles d'entraînement</title>
+<style>
+:root{
+  --bg:#141920; --bg2:#1a212a; --panel:#1e2630; --panel2:#26303c;
+  --line:#2f3a47; --line2:#3e4b5a;
+  --amber:#e5533d; --amber2:#ff7d68; --dim:#8c99a9; --mute:#5f6c7d;
+  --ink:#d8dfe8; --ok:#3ddc84; --ko:#ff5f56; --lock:#485462;
+  --mono:ui-monospace,'JetBrains Mono','Cascadia Code','Fira Code',Menlo,Consolas,monospace;
+  --r:5px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--ink); font-family:var(--mono);
+  font-size:15px; line-height:1.6; -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:920px;margin:0 auto;padding:22px 16px 90px}
+code{background:#10151c;padding:1px 5px;border-radius:3px;color:#ff9d8a;font-size:.88em}
+b{color:var(--amber2)}
+.hidden{display:none!important}
+button{font-family:var(--mono)}
+:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+
+/* ---------- topbar ---------- */
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+.brand{font-size:.8rem;color:var(--mute)}
+.brand .u{color:var(--amber)}
+.brand h1{font-size:1.35rem;color:var(--ink);letter-spacing:.5px;margin-top:2px}
+.stats{display:flex;gap:16px;font-size:.78rem;color:var(--dim);text-align:right}
+.stats .n{display:block;font-size:1.1rem;color:var(--amber);line-height:1.2}
+
+/* ---------- hero : ls -l de ta progression ---------- */
+.lsbox{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.lshead{background:var(--panel2);padding:7px 14px;font-size:.75rem;color:var(--mute);border-bottom:1px solid var(--line)}
+.lsbody{padding:10px 6px 12px}
+.lsrow{
+  display:grid;grid-template-columns:118px 26px 1fr auto;gap:12px;align-items:center;
+  padding:7px 12px;border:1px solid transparent;border-radius:4px;cursor:pointer;
+  font-size:.86rem;text-align:left;background:none;color:var(--ink);width:100%
+}
+.lsrow:hover:not(:disabled){background:var(--panel2);border-color:var(--line2)}
+.lsrow:disabled{cursor:not-allowed;color:var(--lock)}
+.lsrow .mode{color:var(--mute);letter-spacing:.5px;white-space:nowrap}
+.lsrow.done .mode{color:var(--ok)}
+.lsrow.part .mode{color:var(--amber)}
+.lsrow .nl{color:var(--mute);font-size:.8rem}
+.lsrow .nm b{color:inherit;font-weight:400}
+.lsrow .nm .t{color:var(--dim);font-size:.78rem;display:block}
+.lsrow .badge{font-size:.72rem;color:var(--mute)}
+.lsrow.done .badge{color:var(--ok)}
+.total{padding:4px 18px 8px;font-size:.78rem;color:var(--mute)}
+
+/* ---------- bandeau révision ---------- */
+.srsbar{
+  margin-top:14px;background:linear-gradient(90deg,var(--panel2),var(--panel));
+  border:1px solid var(--line2);border-left:3px solid var(--amber);border-radius:var(--r);
+  padding:13px 16px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap
+}
+.srsbar .t{font-size:.88rem}
+.srsbar .s{font-size:.76rem;color:var(--dim);margin-top:2px}
+.btn{
+  background:var(--amber);color:#fff;border:none;border-radius:4px;
+  padding:8px 16px;font-weight:700;cursor:pointer;font-size:.82rem;white-space:nowrap
+}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn.ghost{background:none;border:1px solid var(--line2);color:var(--dim);font-weight:400}
+.btn.ghost:hover{border-color:var(--amber);color:var(--amber)}
+
+/* ---------- salle ---------- */
+.back{background:none;border:none;color:var(--dim);cursor:pointer;font-size:.82rem;padding:4px 0;margin-bottom:12px}
+.back:hover{color:var(--amber)}
+.roomhead{border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:20px}
+.roomhead .eyebrow{font-size:.74rem;color:var(--mute)}
+.roomhead h2{font-size:1.25rem;margin:3px 0 6px}
+.roomhead p{font-size:.88rem;color:var(--dim)}
+.steps{display:flex;gap:5px;margin-top:12px}
+.stepdot{height:3px;flex:1;background:var(--line);border-radius:2px}
+.stepdot.done{background:var(--ok)}
+.stepdot.cur{background:var(--amber)}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:17px 19px;margin-bottom:14px}
+.card h3{font-size:.95rem;color:var(--amber);margin-bottom:9px}
+.card p{margin-bottom:9px;font-size:.9rem}
+.card ul{margin:8px 0 10px 20px;font-size:.89rem}
+.card li{margin-bottom:5px}
+.card p:last-child,.card ul:last-child{margin-bottom:0}
+.tasklab{font-size:.72rem;color:var(--mute);letter-spacing:1px;margin-bottom:8px}
+.qtext{font-size:.93rem;margin-bottom:13px}
+
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{background:var(--bg2);border:1px solid var(--line);border-radius:4px;padding:9px 12px;
+     cursor:pointer;font-size:.87rem;color:var(--ink);text-align:left;transition:border-color .12s}
+.opt:hover:not(:disabled){border-color:var(--line2)}
+.opt:disabled{cursor:default;opacity:.75}
+.opt.right{border-color:var(--ok);color:var(--ok);opacity:1}
+.opt.wrong{border-color:var(--ko);color:var(--ko);opacity:1}
+
+.inrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.inrow .ps{color:var(--amber)}
+.inrow input{flex:1;min-width:200px;background:var(--bg2);border:1px solid var(--line);border-radius:4px;
+  color:var(--ink);font-family:var(--mono);font-size:.88rem;padding:8px 11px}
+.inrow input:focus{border-color:var(--amber);outline:none}
+
+.fb{margin-top:11px;font-size:.85rem;display:none}
+.fb.show{display:block}
+.fb .good{color:var(--ok)}
+.fb .bad{color:var(--ko)}
+.fb .why{color:var(--dim);display:block;margin-top:5px}
+.hintbtn{margin-top:10px;background:none;border:1px dashed var(--line2);color:var(--mute);
+  border-radius:4px;padding:5px 12px;font-size:.76rem;cursor:pointer}
+.hintbtn:hover{color:var(--amber);border-color:var(--amber)}
+.hint{margin-top:9px;font-size:.83rem;color:var(--dim);border-left:2px solid var(--line2);padding-left:11px}
+
+/* ---------- terminal ---------- */
+.term{background:#10151c;border:1px solid var(--line2);border-radius:var(--r);overflow:hidden;margin-top:12px}
+.termbar{background:var(--panel2);padding:6px 12px;font-size:.72rem;color:var(--mute);
+  display:flex;justify-content:space-between;border-bottom:1px solid var(--line)}
+.termbar .goal{color:var(--amber)}
+.termout{padding:11px 13px;font-size:.83rem;max-height:290px;overflow-y:auto;white-space:pre-wrap;word-break:break-word}
+.termout .cmd{color:var(--ink)}
+.termout .cmd .p{color:var(--amber)}
+.termout .err{color:var(--ko)}
+.termout .sys{color:var(--mute);font-style:italic}
+.terminline{display:flex;align-items:center;gap:7px;padding:8px 13px;border-top:1px solid var(--line)}
+.terminline .p{color:var(--amber);font-size:.83rem}
+.terminline input{flex:1;background:none;border:none;color:var(--ink);font-family:var(--mono);
+  font-size:.83rem;outline:none}
+.termfoot{display:flex;justify-content:space-between;gap:10px;padding:7px 13px;
+  border-top:1px solid var(--line);font-size:.75rem;color:var(--mute);align-items:center;flex-wrap:wrap}
+
+/* ---------- widget bits ---------- */
+.bitgrid{display:flex;gap:20px;justify-content:center;margin:6px 0 12px;flex-wrap:wrap}
+.grp{text-align:center}
+.grp .lab{font-size:.7rem;color:var(--mute);margin-bottom:6px}
+.grp .row{display:flex;gap:4px}
+.bit{width:38px;height:44px;border:1px solid var(--line2);border-radius:4px;background:var(--bg2);
+  color:var(--mute);font-family:var(--mono);font-size:1.05rem;cursor:pointer;font-weight:700}
+.bit.on{background:rgba(229,83,61,.16);border-color:var(--amber);color:var(--amber2)}
+.grp .val{margin-top:7px;font-size:1.3rem;color:var(--amber);font-weight:700}
+.bitout{text-align:center;font-size:1.05rem;letter-spacing:2px;margin-top:4px}
+.bitout .oct{color:var(--amber);font-weight:700}
+
+/* ---------- widget inode ---------- */
+.inodewrap{margin:6px 0 10px}
+.inodewrap svg{width:100%;height:auto;display:block}
+.inodectl{display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap}
+.inodemsg{text-align:center;font-size:.83rem;color:var(--dim);margin-top:9px;min-height:1.5em}
+
+/* ---------- fin de salle ---------- */
+.done{background:var(--panel);border:1px solid var(--amber);border-radius:var(--r);padding:20px;text-align:center;margin-top:18px}
+.done .big{font-size:1.05rem;color:var(--amber);margin-bottom:5px}
+.done .sub{font-size:.83rem;color:var(--dim)}
+.done .row{display:flex;gap:9px;justify-content:center;margin-top:14px;flex-wrap:wrap}
+
+.answerbox{background:var(--panel2);border:1px dashed var(--line2);border-radius:4px;padding:12px 14px;margin-top:11px;font-size:.86rem}
+.answerbox .lab{font-size:.72rem;color:var(--mute);margin-bottom:6px}
+footer{margin-top:46px;font-size:.74rem;color:var(--mute);text-align:center;line-height:1.7}
+@media (max-width:560px){
+  .lsrow{grid-template-columns:1fr;gap:3px}
+  .lsrow .nl{display:none}
+  .stats{text-align:left}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="top">
+  <div class="brand">
+    <span class="u">student@campus</span>:~/shell00.lab %
+    <h1>SALLES D'ENTRAÎNEMENT</h1>
+  </div>
+  <div class="stats">
+    <div><span class="n" id="xpN">0</span>xp</div>
+    <div><span class="n" id="strN">0</span>jours</div>
+    <div><span class="n" id="rmN">0/10</span>salles</div>
+  </div>
+</div>
+
+<main id="home">
+  <div class="lsbox">
+    <div class="lshead">ls -l ~/shell00.lab &nbsp;—&nbsp; chaque salle réussie allume ses bits</div>
+    <div class="lsbody" id="lsbody"></div>
+    <div class="total" id="totalLine"></div>
+  </div>
+  <div class="srsbar">
+    <div>
+      <div class="t" id="srsT">Révision espacée</div>
+      <div class="s" id="srsS"></div>
+    </div>
+    <button class="btn" id="srsBtn">réviser</button>
+  </div>
+
+  <div class="srsbar" style="border-left-color:var(--line2)">
+    <div>
+      <div class="t">Sauvegarde manuelle</div>
+      <div class="s">Si ta progression repart de zéro d'un appareil à l'autre, copie ce code et recolle-le ici. Il contient tout : xp, salles, file de révision.</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn ghost" id="expBtn">copier mon code</button>
+      <button class="btn ghost" id="impBtn">restaurer</button>
+    </div>
+  </div>
+  <div id="ioBox" class="hidden" style="margin-top:10px">
+    <textarea id="ioTxt" spellcheck="false" style="width:100%;min-height:82px;background:var(--bg2);border:1px solid var(--line2);border-radius:5px;color:var(--ink);font-family:var(--mono);font-size:.76rem;padding:10px;resize:vertical"></textarea>
+    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center">
+      <button class="btn" id="ioGo">appliquer</button>
+      <button class="btn ghost" id="ioClose">fermer</button>
+      <span id="ioMsg" style="font-size:.78rem;color:var(--dim)"></span>
+    </div>
+  </div>
+</main>
+
+<section id="roomview" class="hidden">
+  <button class="back" id="backBtn">&larr; ls ..</button>
+  <div id="roomHead"></div>
+  <div id="roomBody"></div>
+</section>
+
+<footer>
+  Ce lab entraîne la main et la tête. La note vient de la soutenance : un humain,<br>
+  en face de toi, qui te demande d'expliquer. Va aussi t'entraîner sur lui.
+</footer>
+</div>
+
+<script>
+/* ==========================================================================
+   1. MINI-SHELL  (VFS + commandes)  — le cœur du lab
+   ========================================================================== */
+let INODE = 1000;
+const T0 = Date.UTC(2026,7,10,9,0,0);   // horloge virtuelle
+
+function fDir(mode){ return {type:'dir', mode:mode??0o755, mtime:T0, ino:++INODE, children:{}}; }
+function fFile(content,mode){ return {type:'file', mode:mode??0o644, mtime:T0, ino:++INODE, content:content??''}; }
+function fLink(target){ return {type:'link', mode:0o777, mtime:T0, ino:++INODE, target}; }
+
+function modeStr(n){
+  const t = n.type==='dir'?'d':n.type==='link'?'l':'-';
+  const m = n.type==='link'?0o777:n.mode;
+  let s='';
+  for(let i=2;i>=0;i--){ const v=(m>>(i*3))&7;
+    s+=(v&4?'r':'-')+(v&2?'w':'-')+(v&1?'x':'-'); }
+  return t+s;
+}
+function sizeOf(n){
+  if(n.type==='link') return n.target.length;
+  if(n.type==='dir')  return Object.keys(n.children).length?4096:6;
+  return n.content.length;
+}
+function countRefs(root,obj){
+  let c=0;
+  (function walk(d){ for(const k in d.children){ const ch=d.children[k];
+    if(ch===obj) c++; if(ch.type==='dir') walk(ch); } })(root);
+  return c;
+}
+function nlink(root,n){
+  if(n.type==='dir'){ let s=2; for(const k in n.children) if(n.children[k].type==='dir') s++; return s; }
+  if(n.type==='link') return 1;
+  return Math.max(1,countRefs(root,n));
+}
+const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function fmtTime(ms){
+  const d=new Date(ms);
+  const p=x=>String(x).padStart(2,'0');
+  return MONTHS[d.getUTCMonth()]+' '+String(d.getUTCDate()).padStart(2,' ')+' '+p(d.getUTCHours())+':'+p(d.getUTCMinutes());
+}
+function globRe(p){
+  return new RegExp('^'+p.replace(/[.+^${}()|[\]\\]/g,'\\$&').replace(/\*/g,'.*').replace(/\?/g,'.')+'$');
+}
+
+/* --------- tokenizer : gère quotes et \( \) --------- */
+function tokenize(line){
+  const out=[]; let cur=''; let q=null; let has=false;
+  for(let i=0;i<line.length;i++){
+    const c=line[i];
+    if(q){ if(c===q){q=null;} else cur+=c; continue; }
+    if(c==='"'||c==="'"){ q=c; has=true; continue; }
+    if(c==='\\'){ if(i+1<line.length){ cur+='\\'+line[++i]; has=true; } continue; }
+    if(/\s/.test(c)){ if(cur||has){out.push(cur);cur='';has=false;} continue; }
+    if(c==='>'){ if(cur||has){out.push(cur);cur='';has=false;}
+      if(line[i+1]==='>'){out.push('>>');i++;} else out.push('>'); continue; }
+    cur+=c;
+  }
+  if(cur||has) out.push(cur);
+  return out;
+}
+
+/* --------- machine --------- */
+function newShell(setup){
+  const root=fDir();
+  const sh={root, cwd:[], clock:T0, out:[]};
+  sh.cwdNode=()=>{ let n=root; for(const p of sh.cwd) n=n.children[p]; return n; };
+  if(setup) setup(sh);
+  return sh;
+}
+function resolveDir(sh,parts){          // renvoie {dir,name} pour un chemin
+  let n=sh.cwdNode(); let stack=sh.cwd.slice();
+  if(parts[0]===''){ n=sh.root; stack=[]; parts=parts.slice(1); }
+  for(let i=0;i<parts.length-1;i++){
+    const p=parts[i];
+    if(p===''||p==='.') continue;
+    if(p==='..'){ stack.pop(); n=sh.root; for(const q of stack) n=n.children[q]; continue; }
+    if(!n.children[p]||n.children[p].type!=='dir') return null;
+    n=n.children[p]; stack.push(p);
+  }
+  return {dir:n, name:parts[parts.length-1], stack};
+}
+function lookup(sh,path){
+  const r=resolveDir(sh,path.split('/'));
+  if(!r) return null;
+  if(r.name===''||r.name==='.') return r.dir;
+  if(r.name==='..'){ const s=r.stack.slice(0,-1); let n=sh.root; for(const q of s) n=n.children[q]; return n; }
+  return r.dir.children[r.name]||null;
+}
+function readTarget(sh,path){           // suit un symlink (1 niveau)
+  let n=lookup(sh,path);
+  if(n&&n.type==='link'){ const b=path.split('/').slice(0,-1).concat(n.target).join('/'); n=lookup(sh,b); }
+  return n;
+}
+
+function run(sh,line){
+  sh.clock+=60000;
+  const raw=line.trim();
+  if(!raw) return '';
+  let toks=tokenize(raw);
+  // redirection
+  let redir=null, rmode=null;
+  const gi=toks.findIndex(t=>t==='>'||t==='>>');
+  if(gi>=0){ rmode=toks[gi]; redir=toks[gi+1]; toks=toks.slice(0,gi); }
+  const cmd=toks[0], args=toks.slice(1);
+  let res;
+  try{ res=exec(sh,cmd,args); }
+  catch(e){ res={err:String(e.message||e)}; }
+  if(res.err) return {err:res.err};
+  const text=res.out??'';
+  if(redir){
+    const r=resolveDir(sh,redir.split('/'));
+    if(!r) return {err:redir+': No such file or directory'};
+    const ex=r.dir.children[r.name];
+    if(ex&&ex.type==='dir') return {err:'zsh: is a directory: '+redir};
+    if(ex&&rmode==='>>') ex.content+=text;
+    else if(ex){ ex.content=text; ex.mtime=sh.clock; }
+    else r.dir.children[r.name]=Object.assign(fFile(text),{mtime:sh.clock});
+    return {out:''};
+  }
+  return res;
+}
+
+function exec(sh,cmd,a){
+  const cwd=sh.cwdNode();
+  const O=t=>({out:t});
+  switch(cmd){
+
+  case 'pwd': return O('/home/student'+(sh.cwd.length?'/'+sh.cwd.join('/'):'')+'\n');
+
+  case 'clear': sh.out.length=0; return O('');
+
+  case 'help': return O(
+    'commandes simulées : ls, cd, pwd, cat, echo, touch, mkdir, rm, rmdir,\n'+
+    'chmod, ln, wc, find, man, clear.\n'+
+    'redirections > et >> supportées. Tape la commande de la mission.\n');
+
+  case 'man':{
+    const p=a[0];
+    const M={
+      ls:'LS(1)\n  -a  n\'ignore pas les entrées commençant par un point\n  -l  format long\n  -t  trie par date de modification, plus récent d\'abord\n  -m  liste séparée par des virgules\n  -p  ajoute / aux répertoires\n  -F  ajoute un indicateur (*/=>@|) aux entrées\n  -i  affiche le numéro d\'inode\n',
+      chmod:'CHMOD(1)\n  chmod MODE FICHIER...\n  MODE octal : chiffre par groupe (propriétaire, groupe, autres)\n  r=4  w=2  x=1, on additionne.\n',
+      ln:'LN(1)\n  ln CIBLE NOM        crée un lien dur\n  ln -s CIBLE NOM     crée un lien symbolique\n',
+      find:'FIND(1)\n  find CHEMIN EXPRESSION\n  -type f|d     restreint au type\n  -name MOTIF   filtre sur le nom\n  -o            OU logique\n  \\( \\)          groupe une expression\n  -print        affiche le chemin\n  -delete       supprime le fichier trouvé\n',
+      cat:'CAT(1)\n  -e  affiche $ en fin de ligne (implique -v)\n'
+    };
+    if(!p) return {err:'Quelle page de manuel voulez-vous ?'};
+    return M[p]?O(M[p]):{err:'Aucune entrée de manuel pour '+p};
+  }
+
+  case 'cd':{
+    const t=a[0]||'~';
+    if(t==='~'||t==='/'){ sh.cwd=[]; return O(''); }
+    const parts=t.split('/');
+    let stack=sh.cwd.slice();
+    for(const p of parts){
+      if(p===''||p==='.') continue;
+      if(p==='..'){ stack.pop(); continue; }
+      let n=sh.root; for(const q of stack) n=n.children[q];
+      const nx=n.children[p];
+      if(!nx) return {err:'cd: no such file or directory: '+t};
+      if(nx.type!=='dir') return {err:'cd: not a directory: '+t};
+      if(!((nx.mode>>6)&1)) return {err:'cd: permission denied: '+t};
+      stack.push(p);
+    }
+    sh.cwd=stack; return O('');
+  }
+
+  case 'ls':{
+    const fl=new Set(); const paths=[];
+    a.forEach(x=>{ if(x.startsWith('-')&&x.length>1) x.slice(1).split('').forEach(c=>fl.add(c)); else paths.push(x); });
+    let dir=cwd, prefix='';
+    if(paths.length){
+      const n=lookup(sh,paths[0]);
+      if(!n) return {err:'ls: cannot access \''+paths[0]+'\': No such file or directory'};
+      if(n.type==='dir'){ dir=n; prefix=paths[0]+':\n'; if(paths.length===1) prefix=''; }
+      else{ return O(fl.has('l')?longLine(sh,paths[0],n,fl)+'\n':paths[0]+'\n'); }
+    }
+    if(!((dir.mode>>6)&4)) return {err:'ls: Permission denied'};
+    let names=Object.keys(dir.children);
+    if(!fl.has('a')) names=names.filter(n=>!n.startsWith('.'));
+    names.sort();
+    if(fl.has('t')) names.sort((x,y)=>dir.children[y].mtime-dir.children[x].mtime);
+    if(fl.has('a')) names=['.','..'].concat(names);
+    const deco=n=>{
+      const nd=n==='.'?dir:n==='..'?dir:dir.children[n];
+      let s=n;
+      if(fl.has('p')&&nd.type==='dir') s+='/';
+      else if(fl.has('F')){
+        if(nd.type==='dir') s+='/';
+        else if(nd.type==='link') s+='@';
+        else if(nd.mode&0o111) s+='*';
+      }
+      return s;
+    };
+    if(fl.has('l')){
+      let t='total '+names.length*4+'\n';
+      for(const n of names){
+        if(n==='.'||n==='..'){ t+=longLine(sh,n,dir,fl)+'\n'; continue; }
+        t+=longLine(sh,deco(n),dir.children[n],fl)+'\n';
+      }
+      return O(t);
+    }
+    if(fl.has('m')) return O(names.map(deco).join(', ')+'\n');
+    if(fl.has('i')) return O(names.map(n=>(n==='.'||n==='..'?dir.ino:dir.children[n].ino)+' '+deco(n)).join('  ')+'\n');
+    return O(names.map(deco).join('  ')+(names.length?'\n':''));
+  }
+
+  case 'cat':{
+    const e=a.includes('-e'); const f=a.filter(x=>!x.startsWith('-'));
+    if(!f.length) return {err:'cat: usage: cat [-e] fichier'};
+    let t='';
+    for(const p of f){
+      const n=readTarget(sh,p);
+      if(!n) return {err:'cat: '+p+': No such file or directory'};
+      if(n.type==='dir') return {err:'cat: '+p+': Is a directory'};
+      if(!((n.mode>>6)&4)) return {err:'cat: '+p+': Permission denied'};
+      t+= e ? n.content.replace(/\n/g,'$\n') : n.content;
+    }
+    return O(t);
+  }
+
+  case 'echo':{
+    const s=a.join(' ');
+    return O(s+'\n');
+  }
+
+  case 'wc':{
+    const c=a.includes('-c'); const f=a.filter(x=>!x.startsWith('-'));
+    if(!f.length) return {err:'wc: usage: wc -c fichier'};
+    let t='';
+    for(const p of f){
+      const n=readTarget(sh,p);
+      if(!n) return {err:'wc: '+p+': No such file or directory'};
+      t+=(c?n.content.length:n.content.split('\n').length-1)+' '+p+'\n';
+    }
+    return O(t);
+  }
+
+  case 'touch':{
+    let time=null; const f=[];
+    for(let i=0;i<a.length;i++){
+      if(a[i]==='-t'){ const v=a[++i];
+        const m=/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})$/.exec(v||'');
+        if(!m) return {err:"touch: invalid date format '"+v+"'"};
+        time=Date.UTC(+m[1],+m[2]-1,+m[3],+m[4],+m[5]); continue; }
+      if(a[i]==='-h') continue;
+      if(a[i].startsWith('-')) continue;
+      f.push(a[i]);
+    }
+    if(!f.length) return {err:'touch: missing file operand'};
+    for(const p of f){
+      const r=resolveDir(sh,p.split('/'));
+      if(!r) return {err:'touch: cannot touch \''+p+'\': No such file or directory'};
+      const ex=r.dir.children[r.name];
+      if(ex) ex.mtime=time??sh.clock;
+      else r.dir.children[r.name]=Object.assign(fFile(''),{mtime:time??sh.clock});
+    }
+    return O('');
+  }
+
+  case 'mkdir':{
+    const f=a.filter(x=>!x.startsWith('-'));
+    const p_=a.includes('-p');
+    if(!f.length) return {err:'mkdir: missing operand'};
+    for(const p of f){
+      const parts=p.split('/');
+      let n=cwd;
+      for(let i=0;i<parts.length;i++){
+        const seg=parts[i];
+        if(!seg||seg==='.') continue;
+        if(!n.children[seg]){
+          if(i<parts.length-1&&!p_) return {err:'mkdir: cannot create directory \''+p+'\': No such file or directory'};
+          n.children[seg]=Object.assign(fDir(),{mtime:sh.clock});
+        } else if(i===parts.length-1&&!p_) return {err:'mkdir: cannot create directory \''+p+'\': File exists'};
+        n=n.children[seg];
+      }
+    }
+    return O('');
+  }
+
+  case 'rmdir':{
+    for(const p of a){
+      const r=resolveDir(sh,p.split('/'));
+      const n=r&&r.dir.children[r.name];
+      if(!n) return {err:'rmdir: failed to remove \''+p+'\': No such file or directory'};
+      if(n.type!=='dir') return {err:'rmdir: failed to remove \''+p+'\': Not a directory'};
+      if(Object.keys(n.children).length) return {err:'rmdir: failed to remove \''+p+'\': Directory not empty'};
+      delete r.dir.children[r.name];
+    }
+    return O('');
+  }
+
+  case 'rm':{
+    const rf=a.some(x=>/^-[rf]+$/.test(x));
+    const f=a.filter(x=>!x.startsWith('-'));
+    if(!f.length) return {err:'rm: missing operand'};
+    for(const p of f){
+      const r=resolveDir(sh,p.split('/'));
+      const n=r&&r.dir.children[r.name];
+      if(!n) return {err:'rm: cannot remove \''+p+'\': No such file or directory'};
+      if(n.type==='dir'&&!rf) return {err:'rm: cannot remove \''+p+'\': Is a directory'};
+      delete r.dir.children[r.name];
+    }
+    return O('');
+  }
+
+  case 'chmod':{
+    const f=a.filter(x=>!x.startsWith('-'));
+    if(f.length<2) return {err:'chmod: missing operand'};
+    const m=f[0];
+    if(!/^[0-7]{3,4}$/.test(m)) return {err:'chmod: invalid mode: \''+m+'\' (utilise 3 chiffres octaux)'};
+    for(const p of f.slice(1)){
+      const n=lookup(sh,p);
+      if(!n) return {err:'chmod: cannot access \''+p+'\': No such file or directory'};
+      if(n.type==='link') continue;
+      n.mode=parseInt(m.slice(-3),8);
+    }
+    return O('');
+  }
+
+  case 'ln':{
+    const s=a.includes('-s');
+    const f=a.filter(x=>!x.startsWith('-'));
+    if(f.length<2) return {err:'ln: missing file operand'};
+    const [target,name]=f;
+    const r=resolveDir(sh,name.split('/'));
+    if(!r) return {err:'ln: failed to create link \''+name+'\''};
+    if(r.dir.children[r.name]) return {err:'ln: failed to create link \''+name+'\': File exists'};
+    if(s){ r.dir.children[r.name]=Object.assign(fLink(target),{mtime:sh.clock}); return O(''); }
+    const t=lookup(sh,target);
+    if(!t) return {err:'ln: failed to access \''+target+'\': No such file or directory'};
+    if(t.type==='dir') return {err:'ln: '+target+': hard link not allowed for directory'};
+    r.dir.children[r.name]=t;                 // même objet => même inode
+    return O('');
+  }
+
+  case 'find': return doFind(sh,a);
+
+  default: return {err:'zsh: command not found: '+cmd};
+  }
+}
+
+function longLine(sh,disp,n,fl){
+  const nm = n.type==='link' ? disp+' -> '+n.target : disp;
+  const ino = fl&&fl.has('i') ? n.ino+' ' : '';
+  return ino+modeStr(n)+' '+nlink(sh.root,n)+' student piscine '+
+         String(sizeOf(n)).padStart(4,' ')+' '+fmtTime(n.mtime)+' '+nm;
+}
+
+function doFind(sh,a){
+  let i=0; let start='.';
+  if(a[i]&&!a[i].startsWith('-')&&!/^\\?\($/.test(a[i])){ start=a[i]; i++; }
+  const toks=a.slice(i).map(t=>t.replace(/^\\/,''));
+  if(!toks.length) toks.push('-print');
+  let hasAction=toks.some(t=>t==='-print'||t==='-delete');
+  const startNode=lookup(sh,start);
+  if(!startNode) return {err:'find: \''+start+'\': No such file or directory'};
+
+  const out=[]; const dels=[];
+  let pos=0;
+  function parseOr(){ const l=[parseAnd()]; while(toks[pos]==='-o'){ pos++; l.push(parseAnd()); } 
+    return ctx=>l.some(f=>f(ctx)); }
+  function parseAnd(){ const l=[]; 
+    while(pos<toks.length&&toks[pos]!=='-o'&&toks[pos]!==')') l.push(parsePrim());
+    return ctx=>{ for(const f of l) if(!f(ctx)) return false; return true; }; }
+  function parsePrim(){
+    const t=toks[pos++];
+    if(t==='('){ const e=parseOr(); if(toks[pos]===')') pos++; return e; }
+    if(t==='-name'){ const re=globRe(toks[pos++]); return c=>re.test(c.name); }
+    if(t==='-type'){ const k=toks[pos++]; return c=>(k==='f'&&c.node.type==='file')||(k==='d'&&c.node.type==='dir')||(k==='l'&&c.node.type==='link'); }
+    if(t==='-print'){ return c=>{ out.push(c.path); return true; }; }
+    if(t==='-delete'){ return c=>{ dels.push(c); return true; }; }
+    if(t==='-maxdepth'){ pos++; return ()=>true; }
+    throw new Error('find: unknown predicate `'+t+"'");
+  }
+  let expr;
+  try{ expr=parseOr(); }catch(e){ return {err:String(e.message)}; }
+  if(!hasAction){ const inner=expr; expr=c=>{ if(inner(c)){ out.push(c.path); return true; } return false; }; }
+
+  (function walk(node,path,parent,name){
+    expr({node,path,name:name??'.',parent});
+    if(node.type==='dir') for(const k of Object.keys(node.children).sort())
+      walk(node.children[k], path+'/'+k, node, k);
+  })(startNode,start,null,start.split('/').pop());
+
+  for(const d of dels) if(d.parent) delete d.parent.children[d.name];
+  return {out: out.length? out.join('\n')+'\n' : ''};
+}
+
+/* ==========================================================================
+   2. CONTENU DES SALLES
+   ========================================================================== */
+const ROOMS=[
+{
+id:'r1', file:'redirection', tag:'ex00', title:'Écrire dans un fichier',
+sub:"cat n'exécute pas, echo ajoute un saut de ligne, > écrase.",
+steps:[
+ {k:'lesson',h:'Ce que fait vraiment cat',b:`
+  <p><code>cat truc</code> <b>affiche</b> le contenu de truc. Il ne l'exécute pas, il ne l'interprète pas. Pour que <code>cat</code> affiche quelque chose, il faut que le fichier contienne littéralement ce quelque chose.</p>
+  <p><code>echo</code> écrit du texte sur la sortie, plus un saut de ligne invisible. <code>&gt;</code> détourne cette sortie vers un fichier au lieu de l'écran.</p>
+  <p>Et pour voir l'invisible : <code>cat -e</code> affiche un <code>$</code> à chaque fin de ligne.</p>`},
+ {k:'term',h:'Mission : fabrique la sortie voulue',
+  goal:'cat marque doit afficher OK',
+  brief:"Le dossier est vide. Crée un fichier <code>marque</code> tel que <code>cat marque</code> affiche <code>OK</code>. Vérifie ensuite ce que tu as vraiment écrit.",
+  setup:sh=>{},
+  check:sh=>{ const n=lookup(sh,'marque'); return !!n&&n.type==='file'&&n.content==='OK\n'; },
+  hints:["La commande qui écrit du texte s'appelle echo. Le caractère qui détourne vers un fichier est >.",
+         "Forme générale : echo TEXTE > NOMDUFICHIER. Puis contrôle avec cat -e.",
+         "echo OK > marque — et cat -e marque doit répondre OK$"]},
+ {k:'mcq',h:'',q:"Ton <code>cat -e marque</code> affiche <code>OK$</code>. Combien pèse le fichier ?",
+  opts:['2 octets','3 octets','4 octets','1 octet'],a:1,
+  why:"O et K font 2, le saut de ligne matérialisé par le $ en fait 1 de plus. echo ajoute toujours ce saut, et il compte dans la taille."},
+ {k:'term',h:'Mission : quand la redirection refuse',
+  goal:'écrire debut dans journal',
+  brief:"Écris <code>debut</code> dans <code>journal</code>. Si le shell te repousse, ne t'acharne pas : liste d'abord en format long et regarde le tout premier caractère de la ligne.",
+  setup:sh=>{ sh.root.children['journal']=fDir(); },
+  check:sh=>{ const n=lookup(sh,'journal'); return !!n&&n.type==='file'&&n.content==='debut\n'; },
+  hints:["Lance ls -l. Le premier caractère annonce le type de l'entrée, avant même les permissions.",
+         "Un d en première position signifie directory. On n'écrit pas de texte dans un dossier.",
+         "Supprime le dossier vide avec rmdir, puis refais ta redirection."]},
+ {k:'mcq',h:'',q:"Un fichier contient déjà trois lignes. Que fait <code>echo fin &gt; f</code> ?",
+  opts:['Ajoute fin à la suite','Remplace tout le contenu par fin','Refuse car le fichier existe','Crée un fichier f2'],a:1,
+  why:"Une seule chevron écrase. Pour ajouter à la fin sans rien perdre, il en faut deux."}
+]},
+
+{
+id:'r2', file:'lslong', tag:'ex01', title:'Lire une ligne de ls -l',
+sub:'Type, permissions, nombre de liens, taille : décoder les colonnes.',
+steps:[
+ {k:'lesson',h:'Anatomie de la ligne',b:`
+  <p>Une ligne de <code>ls -l</code> se lit de gauche à droite :</p>
+  <ul>
+   <li><b>1 caractère de type</b> : <code>-</code> fichier ordinaire, <code>d</code> dossier, <code>l</code> lien symbolique</li>
+   <li><b>9 caractères de permissions</b> : trois groupes de r, w, x — propriétaire, groupe, autres</li>
+   <li><b>un nombre</b> : le compteur de liens durs (salle 4)</li>
+   <li>propriétaire, groupe</li>
+   <li><b>la taille en octets</b></li>
+   <li>date de modification, puis le nom</li>
+  </ul>
+  <p>Dans chaque groupe l'ordre est toujours r puis w puis x. Un tiret signifie « cette permission est absente ».</p>`},
+ {k:'term',h:'Mission : observe avant de répondre',
+  goal:'liste en format long',
+  brief:"Trois entrées t'attendent, de trois natures différentes. Liste-les en format long et prends le temps de lire chaque colonne. La mission valide dès que tu as affiché le format long.",
+  setup:sh=>{ sh.root.children['notes']=Object.assign(fFile('x'.repeat(240),0o644),{mtime:T0-86400000});
+              sh.root.children['photos']=Object.assign(fDir(0o755),{mtime:T0-3600000});
+              sh.root.children['lancer']=Object.assign(fFile('#!/bin/sh\n',0o755),{mtime:T0}); },
+  check:(sh,hist)=>hist.some(h=>/^ls\s+.*l/.test(h)),
+  hints:["C'est ls, avec l'option qui déplie une entrée par ligne avec tous ses détails.","ls -l"]},
+ {k:'mcq',h:'',q:"Sur la ligne du dossier <code>photos</code>, la colonne des tailles affiche 4096. Ça veut dire quoi ?",
+  opts:["4096 fichiers dedans","La taille en octets de l'entrée de dossier elle-même","Le numéro d'inode","Les permissions converties en décimal"],a:1,
+  why:"C'est toujours la taille en octets de l'entrée. Pour un dossier elle ne dit rien sur le contenu, d'où le XX du sujet à cet endroit."},
+ {k:'input',h:'',q:"Un fichier doit peser un nombre d'octets bien précis. Quelle commande te donne cette taille ?",
+  a:['wc -c fichier','wc -c'],accept:v=>/^wc\s+-c(\s|$)/.test(v),
+  why:"wc -c compte les octets. Le piège habituel : le saut de ligne ajouté par echo compte dans le total."},
+ {k:'mcq',h:'',q:"Tu dois obtenir un fichier en <code>-r-xr-x---</code> contenant du texte. Dans quel ordre travailler ?",
+  opts:["chmod puis écrire le contenu","Écrire le contenu puis chmod","Peu importe","chmod deux fois"],a:1,
+  why:"Cette cible n'a aucun w, pas même pour toi. Une fois posée, écrire dedans est refusé : tu te bloques dehors."}
+]},
+
+{
+id:'r3', file:'chmod', tag:'ex01/02', title:'chmod et l\'octal',
+sub:'r=4, w=2, x=1. Traduire dans les deux sens, sans hésiter.',
+steps:[
+ {k:'bits',h:'Manipule les bits',
+  b:"Clique les cases pour allumer ou éteindre chaque permission. Regarde le chiffre de chaque groupe suivre. Objectif : sentir pourquoi aucun total n'est ambigu."},
+ {k:'lesson',h:'Pourquoi ces valeurs',b:`
+  <p>r vaut 4, w vaut 2, x vaut 1. Ce sont des puissances de deux, donc chaque total de 0 à 7 correspond à une seule combinaison. 6 ne peut être que 4+2, jamais autre chose.</p>
+  <p>Un chiffre par groupe, dans l'ordre <b>propriétaire, groupe, autres</b>. La syntaxe met le mode avant le fichier.</p>
+  <p>Sur un <b>dossier</b>, x ne signifie pas « exécuter » mais « pouvoir entrer dedans ». C'est pour ça qu'on règle les permissions des dossiers en dernier.</p>`},
+ {k:'input',h:'',q:"Traduis <code>-rwxr-x---</code> en octal (les trois chiffres).",
+  a:['750'],why:"rwx=7, r-x=5, ---=0."},
+ {k:'input',h:'',q:"Traduis <code>526</code> en lettres (les 9 caractères, style rwxr-xr--).",
+  a:['r-x-w-rw-'],why:"5=r-x, 2=-w-, 6=rw-. Le 2 tout seul est le cas qu'on rate : écriture sans lecture."},
+ {k:'term',h:'Mission : atteins la cible exacte',
+  goal:'budget.csv en -r--rwx--x',
+  brief:"Le fichier <code>budget.csv</code> est en <code>-rw-rw-r--</code>. Amène-le exactement à <code>-r--rwx--x</code>. Calcule d'abord, tape ensuite, vérifie enfin.",
+  setup:sh=>{ sh.root.children['budget.csv']=fFile('mois,montant\n',0o664); },
+  check:sh=>{ const n=lookup(sh,'budget.csv'); return n&&n.mode===0o471; },
+  hints:["Découpe la cible en trois paquets de trois : r-- puis rwx puis --x.",
+         "r--=4, rwx=7, --x=1.",
+         "Le mode vient avant le nom du fichier dans la commande."]},
+ {k:'term',h:'Mission : le dossier verrouillé',
+  goal:'lire inventaire dans archives',
+  brief:"Le dossier <code>archives</code> contient un fichier <code>inventaire</code>, mais tu ne peux pas y entrer. Débloque l'accès, entre, et affiche le fichier.",
+  setup:sh=>{ const d=fDir(0o600); d.children['inventaire']=fFile('12 cartons\n'); sh.root.children['archives']=d; },
+  check:(sh,hist)=>{ const d=lookup(sh,'/archives'); return !!d&&!!((d.mode>>6)&1)&&hist.some(h=>/^cat\s+.*inventaire/.test(h)); },
+  hints:["Sans le bit x sur un dossier, cd est refusé. Regarde ce qui manque au groupe propriétaire.",
+         "Le propriétaire a rw-, soit 6. Il lui faut aussi le x, ce qui donne 7.",
+         "chmod avec le bon mode sur archives, puis cd archives, puis cat inventaire."]}
+]},
+
+{
+id:'r4', file:'liens', tag:'ex02', title:'Liens durs et symboliques',
+sub:'Deux étiquettes sur une boîte, ou un post-it qui note une adresse.',
+steps:[
+ {k:'lesson',h:'Deux mécanismes très différents',b:`
+  <p>Un fichier, c'est deux choses séparées : un <b>contenu</b> stocké quelque part (l'inode, avec ses permissions, sa taille, sa date) et un <b>nom</b> dans un dossier qui pointe dessus.</p>
+  <p><b>ln cible nom</b> crée un <b>lien dur</b> : un deuxième nom vers le même inode. Changer les permissions par l'un se voit sur l'autre, puisqu'elles appartiennent au contenu et pas au nom.</p>
+  <p><b>ln -s cible nom</b> crée un <b>lien symbolique</b> : un petit fichier à part dont le contenu est le texte du chemin visé. Sa taille est la longueur de ce texte.</p>`},
+ {k:'inode',h:'Observe la différence',
+  b:"Deux noms pointent vers la même boîte. Supprime un nom et regarde ce qui survit, dans chacun des deux cas."},
+ {k:'term',h:'Mission : fabrique les deux sortes',
+  goal:'un lien dur et un lien symbolique',
+  brief:"Le fichier <code>source</code> et le dossier <code>dossier</code> existent. Crée <code>copie_dure</code> comme lien dur vers <code>source</code>, et <code>pointeur</code> comme lien symbolique vers <code>dossier</code>. Contrôle le résultat en format long.",
+  setup:sh=>{ sh.root.children['dossier']=fDir(); sh.root.children['source']=fFile('contenu\n'); },
+  check:sh=>{ const a=lookup(sh,'source'),b=lookup(sh,'copie_dure'),c=lookup(sh,'pointeur');
+              return a&&b&&a===b&&c&&c.type==='link'&&c.target==='dossier'; },
+  hints:["Une seule commande fait les deux, avec ou sans une option d'une lettre. Consulte man ln.",
+         "Ordre des arguments : d'abord la cible, ensuite le nouveau nom.",
+         "Le lien symbolique, c'est la même commande avec -s."]},
+ {k:'mcq',h:'',q:"<code>copie_dure</code> est un lien dur vers <code>source</code>. Tu fais <code>chmod 400 source</code>. Que devient copie_dure ?",
+  opts:['Rien ne change','Elle passe aussi en 400','Elle est supprimée','Elle devient un lien mort'],a:1,
+  why:"Même inode. Les permissions sont une propriété du contenu, pas du nom qui y mène."},
+ {k:'input',h:'',q:"<code>ln -s rapports lien</code> : quelle taille fait <code>lien</code>, en octets ? (juste le nombre)",
+  a:['8'],why:"r-a-p-p-o-r-t-s = 8 caractères. Un lien symbolique ne stocke que le texte du chemin, rien d'autre."},
+ {k:'term',h:'Mission : casse un lien',
+  goal:'observer qui survit',
+  brief:"<code>data</code> est un fichier, <code>jumeau</code> un lien dur vers lui, <code>alias</code> un lien symbolique vers lui. Supprime <code>data</code>, puis essaie de lire <code>jumeau</code> et <code>alias</code>. Note lequel répond encore.",
+  setup:sh=>{ const f=fFile('mesures 2026\n'); sh.root.children['data']=f; sh.root.children['jumeau']=f;
+              sh.root.children['alias']=fLink('data'); },
+  check:(sh,hist)=>!lookup(sh,'data') && hist.some(h=>/^cat\s+.*alias/.test(h)) && hist.some(h=>/^cat\s+.*jumeau/.test(h)),
+  hints:["Supprime data, puis affiche les deux autres avec cat.",
+         "Le lien dur garde le contenu en vie. Le symbolique pointe vers un nom qui n'existe plus."]},
+ {k:'mcq',h:'',q:"Pourquoi un lien symbolique s'affiche-t-il toujours <code>lrwxrwxrwx</code> ?",
+  opts:['Il est accessible à tous par sécurité','Ses permissions sont figées sous Linux ; ce sont celles de la cible qui décident','Il hérite des permissions du dossier','C\'est un bug d\'affichage'],a:1,
+  why:"On ne modifie pas les permissions d'un lien symbolique : l'affichage est constant, et l'accès réel dépend de la cible."}
+]},
+
+{
+id:'r5', file:'ssh', tag:'ex03', title:'Clés SSH',
+sub:'Une paire : une moitié se donne, l\'autre jamais.',
+steps:[
+ {k:'lesson',h:'Le principe',b:`
+  <p>Générer une clé produit deux fichiers dans <code>~/.ssh/</code> : la <b>privée</b> et la <b>publique</b>, cette dernière portant le suffixe <code>.pub</code>.</p>
+  <p>Le serveur garde la publique. À la connexion il envoie un défi que seule la privée sait résoudre. Aucun mot de passe ne circule, et la privée ne quitte jamais ta machine.</p>
+  <p>Une clé publique tient sur une ligne : le type de l'algorithme, la clé en base64, puis un commentaire sans aucun rôle cryptographique.</p>`},
+ {k:'term',h:'Mission : trouve la bonne moitié',
+  goal:'afficher la clé publique, pas l\'autre',
+  brief:"Le dossier des clés existe mais n'apparaît pas au premier coup d'œil. Trouve-le, puis affiche le contenu de la clé <b>publique</b>. Afficher la privée fait échouer la mission.",
+  setup:sh=>{ const d=fDir(0o700);
+    d.children['id_ed25519']=fFile('-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjEAAAAA...\n-----END OPENSSH PRIVATE KEY-----\n',0o600);
+    d.children['id_ed25519.pub']=fFile('ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExempleDeCleePubliqueFictive student@campus\n',0o644);
+    d.children['known_hosts']=fFile('git.exemple.net ssh-ed25519 AAAA...\n',0o600);
+    sh.root.children['.ssh']=d; },
+  check:(sh,hist)=>hist.some(h=>/cat\s+.*id_ed25519\.pub/.test(h)) && !hist.some(h=>/cat\s+[^|]*id_ed25519(\s|$)/.test(h)),
+  hints:["Un nom qui commence par un point est masqué par ls. Une option d'une lettre montre tout.",
+         "ls -a pour repérer le dossier, puis entre dedans et liste son contenu.",
+         "Affiche celui dont le nom se termine par .pub, et surtout pas l'autre."]},
+ {k:'mcq',h:'',q:"Un champ web te demande ta clé. Le fichier que tu t'apprêtes à coller commence par <code>-----BEGIN OPENSSH PRIVATE KEY-----</code>. Tu fais quoi ?",
+  opts:['Je colle, c\'est ce qui est demandé','J\'arrête : c\'est la moitié privée, elle ne se publie jamais','Je colle seulement la première ligne','Je la chiffre avant de coller'],a:1,
+  why:"Publier une clé privée permet à n'importe qui d'usurper ton identité. La publique tient sur une ligne et commence par le nom de l'algorithme."},
+ {k:'mcq',h:'',q:"Tu viens de remplacer ta clé sur un serveur. Comment sais-tu que ça a marché ?",
+  opts:['Un mail de confirmation arrive','Une opération qui passe par SSH fonctionne à nouveau','ls -l sur la clé le montre','Le fichier change de taille'],a:1,
+  why:"La preuve par l'usage : si une connexion SSH aboutit, le serveur reconnaît bien ta nouvelle clé."}
+]},
+
+{
+id:'r6', file:'manpage', tag:'ex04', title:'RTFM : choisir la bonne option',
+sub:'Chercher dans le manuel, et prendre l\'option qui fait exactement ce qu\'on demande, ni plus.',
+steps:[
+ {k:'lesson',h:'Le manuel est l\'outil de l\'examen',b:`
+  <p>À l'exam final, pas d'internet : seulement <code>man</code>. Navigation : <code>/mot</code> pour chercher, <code>n</code> pour l'occurrence suivante, <code>q</code> pour quitter.</p>
+  <p>Le vrai réflexe à acquérir n'est pas de retenir des options par cœur, c'est de savoir formuler ce qu'on cherche puis de le trouver dans la page. Un sujet qui écrit « RTFM » teste exactement ça.</p>
+  <p>Et quand deux options font presque la même chose, celle qui en fait <b>le moins</b> est la bonne dès que l'énoncé dit de ne faire que ce qui est demandé.</p>`},
+ {k:'term',h:'Mission : compose la sortie exacte',
+  goal:'une seule ligne, triée, ponctuée, sans extras',
+  brief:"<code>man ls</code> fonctionne ici. Produis une liste des entrées non cachées, <b>triée par date de modification</b> (plus récent d'abord), <b>séparée par une virgule et un espace</b>, avec un <b>slash après les dossiers</b>, et <b>aucun autre symbole ajouté</b>.",
+  setup:sh=>{ sh.root.children['vieux.log']=Object.assign(fFile('a'),{mtime:T0-500000});
+              sh.root.children['images']=Object.assign(fDir(),{mtime:T0-300000});
+              sh.root.children['run']=Object.assign(fFile('x',0o755),{mtime:T0-100000});
+              sh.root.children['.tmp']=fFile('x'); },
+  check:(sh,hist)=>{
+    const last=[...hist].reverse().find(h=>h.startsWith('ls'));
+    if(!last) return false;
+    const r=run(newShellFrom(sh),last);
+    return r.out==='run, images/, vieux.log\n';
+  },
+  hints:["Trois options à combiner. Dans man ls, cherche /comma pour la ponctuation, et l'option de tri porte l'initiale du mot anglais pour « temps ».",
+         "Il te reste le slash sur les dossiers. Deux options y ressemblent, elles ne font pas la même chose.",
+         "L'une ajoute uniquement le slash aux dossiers ; l'autre décore aussi les exécutables et les liens. Prends la discrète."]},
+ {k:'mcq',h:'',q:"Deux options ajoutent un slash aux dossiers. L'une ajoute en plus une étoile aux exécutables et un arobase aux liens. Laquelle prendre quand l'énoncé dit « fais seulement ce qui est demandé » ?",
+  opts:["Celle qui décore tout, c'est plus complet","Celle qui ajoute uniquement le slash","Les deux conviennent","Ni l'une ni l'autre, il faut un pipe"],a:1,
+  why:"Tout symbole non demandé est une différence avec la sortie attendue, donc une erreur. Le minimum suffisant est la bonne réponse."},
+ {k:'mcq',h:'',q:"L'énoncé exclut les fichiers cachés. Que faut-il ajouter à <code>ls</code> ?",
+  opts:["L'option qui montre tout","Rien : ls les masque déjà par défaut","Un filtre avec grep","Une option de tri"],a:1,
+  why:"Le comportement par défaut fait déjà le travail. Ajouter l'option -a produirait l'inverse, en montrant aussi le point et le double point."}
+]},
+
+{
+id:'r7', file:'git', tag:'rendu', title:'Git : le rendu, pas une sauvegarde',
+sub:'Ce qui n\'est pas poussé n\'existe pas.',
+steps:[
+ {k:'lesson',h:'Le dépôt EST le rendu',b:`
+  <p>La correction automatique clone ton dépôt distant. Elle ne voit jamais ton disque. Un projet égale un dépôt, dont l'adresse figure sur la page du projet.</p>
+  <p>Trois étapes, jamais deux : <code>git add -A</code> prépare, <code>git commit -m "msg"</code> enregistre <b>localement</b>, <code>git push</code> envoie au serveur.</p>
+  <p>Tes trois vérificateurs : <code>git status</code> (propre et à jour), <code>git ls-files</code> (ce que git connaît vraiment, donc ce qui sera corrigé), <code>git remote -v</code> (le bon dépôt ?).</p>`},
+ {k:'mcq',h:'',q:"add et commit faits, push oublié. Que voit la correction ?",
+  opts:['Tout, le commit suffit','Rien de nouveau : le commit est resté sur ta machine','La moitié','Une version compressée'],a:1,
+  why:"commit enregistre en local, push envoie. Sans push, le serveur ignore ton travail."},
+ {k:'input',h:'',q:"Quelle commande liste exactement ce que git connaît, donc ce qui sera corrigé ?",
+  a:['git ls-files'],why:"Plus fiable que ls, qui montre aussi les fichiers que git ignore ou n'a jamais enregistrés."},
+ {k:'mcq',h:'',q:"Un camarade a neuf dossiers d'exercices sur son disque, mais <code>git ls-files</code> n'en affiche qu'un seul. Diagnostic ?",
+  opts:['Dépôt corrompu','Le reste n\'a jamais été commité : presque rien ne sera corrigé','Normal, git compresse','Problème de clé SSH'],a:1,
+  why:"Les fichiers présents sur le disque ne comptent pas. Seuls les commits poussés existent pour la correction."},
+ {k:'mcq',h:'',q:"Pourquoi pousser dès le premier exercice, avant d'avoir fini ?",
+  opts:['Ça donne des points bonus','Ça teste le canal (clé, dépôt, droits) tant qu\'il reste du temps pour réparer','La régularité est notée','Pour réserver sa place'],a:1,
+  why:"Un push cassé découvert la veille du rendu coûte le module entier. Découvert au premier exercice, il coûte dix minutes."},
+ {k:'answer',h:'À dire à voix haute',
+  q:"Explique en trois phrases pourquoi « tout est sur mon disque, je rendrai à la fin » est une mauvaise idée.",
+  a:"Le rendu passe par le dépôt distant : la correction le clone et ne lit jamais mon disque. Sans add, commit et push, mon travail n'existe pas pour l'école. Et attendre la fin, c'est découvrir une clé cassée ou un mauvais dépôt quand il est trop tard pour corriger."}
+]},
+
+{
+id:'r8', file:'diffpatch', tag:'ex07', title:'diff et patch',
+sub:'Une recette de transformation, et la machine qui l\'applique.',
+steps:[
+ {k:'lesson',h:'Deux commandes réciproques',b:`
+  <p><code>diff v1 v2</code> produit la recette pour passer de v1 à v2. Les lignes préfixées <code>&lt;</code> viennent du premier fichier, celles préfixées <code>&gt;</code> du second. Les codes comme <code>1,2c1,8</code> disent « remplace les lignes 1-2 par les lignes 1-8 ».</p>
+  <p><code>patch</code> applique la recette dans l'autre sens. L'option <code>-o</code> écrit le résultat dans un nouveau fichier au lieu de modifier l'original sur place.</p>
+  <p>Vérification reine : refaire le diff entre l'original et ton résultat, et le comparer à la recette de départ. Identiques, donc juste par définition.</p>`},
+ {k:'mcq',h:'',q:"Dans la sortie de <code>diff v1 v2</code>, les lignes préfixées <code>&gt;</code> appartiennent à…",
+  opts:['v1','v2','Aux deux','Au diff lui-même'],a:1,
+  why:"Le fichier de gauche dans la commande est marqué <, celui de droite est marqué >."},
+ {k:'input',h:'',q:"Tu as <code>v1</code> et <code>changes.diff</code>. Écris la commande qui fabrique <code>v2</code> sans modifier v1.",
+  a:['patch -o v2 v1 changes.diff'],accept:v=>/^patch\s+/.test(v)&&/-o\s+v2/.test(v)&&/(^|\s)v1(\s|$)/.test(v)&&/changes\.diff/.test(v),
+  why:"Sans -o, patch modifierait v1 sur place et tu perdrais l'original, donc ton moyen de vérification."},
+ {k:'mcq',h:'',q:"Ton résultat pèse un octet de moins que celui attendu. Cause la plus probable ?",
+  opts:['Mauvaise version de patch','Recopie à la main : un espace en fin de ligne, invisible, perdu au passage','Disque plein','Compression automatique'],a:1,
+  why:"Espaces finaux et sauts de ligne ne se voient pas mais comptent. C'est précisément pour ça qu'on applique un patch au lieu de recopier."},
+ {k:'answer',h:'À dire à voix haute',
+  q:"Comment prouves-tu que ton fichier reconstruit est correct ? Donne le raisonnement, puis les commandes.",
+  a:"Je refais le diff entre l'original et mon résultat, et je le compare à la recette fournie : s'ils sont identiques octet pour octet, mon fichier est par définition celui qui produit ce diff. En pratique : <code>diff v1 v2 &gt; check.diff</code> puis <code>diff check.diff changes.diff</code>, qui ne doit rien afficher."}
+]},
+
+{
+id:'r9', file:'find', tag:'ex08', title:'find : tester puis agir',
+sub:'Une seule commande qui filtre et agit, sans aucun chaînage.',
+steps:[
+ {k:'lesson',h:'Tests et actions',b:`
+  <p><code>find</code> parcourt une arborescence et évalue, pour chaque entrée, une expression faite de <b>tests</b> (le type, le nom) et d'<b>actions</b> (afficher, supprimer).</p>
+  <p>Les éléments qui se suivent forment un ET implicite, évalué de gauche à droite avec arrêt au premier faux. C'est ce qui permet d'enchaîner deux actions : elles ne s'exécutent que si les tests ont réussi, dans l'ordre. Aucun <code>;</code> ni <code>&amp;&amp;</code> nécessaire.</p>
+  <p>Le OU s'écrit <code>-o</code> et doit être groupé par des parenthèses <b>échappées</b> : sans backslash, le shell les interpréterait avant find. Même logique pour les motifs, qu'on met entre guillemets pour que le shell ne développe pas l'étoile.</p>`},
+ {k:'term',h:'Mission : le ménage',
+  goal:'afficher puis supprimer, en une commande',
+  brief:"Trouve tous les <b>fichiers</b> dont le nom se termine par <code>.bak</code> ou commence par <code>tmp_</code>, y compris dans les sous-dossiers. Affiche-les puis supprime-les, en <b>une seule commande find</b>. Le dossier <code>sauvegardes.bak</code> et les autres fichiers doivent survivre.",
+  setup:sh=>{ sh.root.children['garder.txt']=fFile('a');
+              sh.root.children['rapport.bak']=fFile('a');
+              sh.root.children['tmp_cache']=fFile('a');
+              sh.root.children['sauvegardes.bak']=fDir();
+              const s=fDir(); s.children['vieux.bak']=fFile('a'); s.children['ok.c']=fFile('a');
+              sh.root.children['sub']=s; },
+  check:sh=>{
+    const g=lookup(sh,'garder.txt'), d=lookup(sh,'sauvegardes.bak'), s=lookup(sh,'sub/ok.c');
+    const gone=!lookup(sh,'rapport.bak')&&!lookup(sh,'tmp_cache')&&!lookup(sh,'sub/vieux.bak');
+    return !!g&&!!d&&d.type==='dir'&&!!s&&gone; },
+  hints:["Structure : le point de départ, puis la restriction de type, puis le groupe de noms, puis les deux actions.",
+         "Le OU s'écrit -o, et le groupe se délimite par des parenthèses précédées d'un backslash.",
+         "Les motifs vont entre guillemets. L'étoile remplace n'importe quelle suite de caractères, avant ou après le texte fixe."],
+  post:"Le dossier <code>sauvegardes.bak</code> a survécu grâce à la restriction de type. Sans elle, tu supprimais un dossier entier et tout son contenu."},
+ {k:'mcq',h:'',q:"Pourquoi mettre les motifs entre guillemets, comme dans <code>-name \"*.bak\"</code> ?",
+  opts:['Pure convention','Pour empêcher le shell de remplacer l\'étoile avant que find reçoive le motif','Pour ignorer la casse','C\'est obligatoire pour toute option'],a:1,
+  why:"Sans guillemets, si un fichier correspondant existe dans le dossier courant, le shell substituerait son nom au motif et find chercherait la mauvaise chose."},
+ {k:'answer',h:'À dire à voix haute',
+  q:"L'énoncé interdit tout chaînage de commandes. Explique comment ta commande arrive quand même à afficher ET supprimer.",
+  a:"find accepte plusieurs actions dans une même expression. Pour chaque entrée qui passe les tests, il les exécute dans l'ordre : d'abord l'affichage du chemin, ensuite la suppression. Tout se déroule à l'intérieur de l'unique invocation de find, donc il n'y a ni point-virgule, ni double esperluette, ni pipe."}
+]},
+
+{
+id:'r10', file:'soutenance', tag:'boss', title:'Soutenance blanche', boss:true,
+sub:'Dix questions sur ton rendu réel, à voix haute, sans lire.',
+steps:[
+ {k:'lesson',h:'Règle du jeu',b:`
+  <p>Les salles précédentes t'entraînent sur des cas neufs, exprès, pour que tu apprennes le mécanisme et pas la réponse. Ici c'est l'inverse : ce sont tes vrais fichiers rendus, et les questions qu'un correcteur pose réellement.</p>
+  <p>Pour chaque question : réponds <b>à haute voix, en entier</b>, puis révèle. Sois honnête. Si tu as dû lire pour répondre, coche « pas encore ».</p>`},
+ {k:'viva'}
+]}
+];
+
+/* copie superficielle d'un shell pour rejouer une commande sans effet de bord */
+function newShellFrom(sh){
+  const clone=JSON.parse(JSON.stringify({root:sh.root,cwd:sh.cwd,clock:sh.clock}));
+  const s={root:clone.root,cwd:clone.cwd,clock:clone.clock,out:[]};
+  s.cwdNode=()=>{ let n=s.root; for(const p of s.cwd) n=n.children[p]; return n; };
+  return s;
+}
+
+const VIVA=[
+ {q:"Pourquoi test3 et test5 affichent un 2 en deuxième colonne, et que se passe-t-il si on supprime test3 ?",
+  a:"Ce sont deux liens durs : deux noms vers le même inode. La colonne compte les noms qui pointent sur ce contenu. Supprimer test3 enlève un nom ; le contenu survit tant qu'il en reste un, donc test5 fonctionne toujours."},
+ {q:"Pourquoi test6 fait 5 octets et pourquoi aucun chmod dessus ?",
+  a:"C'est un lien symbolique dont le contenu est le texte « test0 », soit 5 caractères. Ses permissions affichées lrwxrwxrwx ne sont pas modifiables sous Linux : ce sont celles de la cible qui s'appliquent."},
+ {q:"Calcule chmod 715 en lettres, puis -rw-r----x en octal.",
+  a:"715 = rwx--xr-x. Et -rw-r----x = 641. Méthode : r=4, w=2, x=1, on additionne groupe par groupe, dans l'ordre propriétaire, groupe, autres."},
+ {q:"Dans midLS, pourquoi -p et pas -F ?",
+  a:"Les deux ajoutent un slash aux dossiers, mais -F ajoute aussi une étoile aux exécutables et un arobase aux liens symboliques. Le sujet dit « do only what is asked » : -p fait exactement ce qui est demandé."},
+ {q:"Dans git_commit.sh, pourquoi %H et pas %h ?",
+  a:"%H donne l'identifiant complet, 40 caractères hexadécimaux, ce que montre l'exemple du sujet. %h donne la forme abrégée. L'identifiant est une empreinte calculée sur le contenu, le parent, l'auteur et la date."},
+ {q:"Dans git_ignore.sh, à quoi sert --exclude-standard ?",
+  a:"--ignored a besoin de savoir quelles règles appliquer. --exclude-standard active les sources standard : .gitignore, .git/info/exclude et la config globale. Git refuse la combinaison sans lui."},
+ {q:"Dans clean, comment afficher puis supprimer sans aucun chaînage ?",
+  a:"find évalue une expression par entrée, avec un ET implicite et arrêt au premier faux. -print et -delete sont deux actions successives : elles ne s'exécutent que si les tests passent, dans l'ordre. Tout tient dans une seule invocation."},
+ {q:"À quoi sert -o dans patch, et comment vérifies-tu ton résultat ?",
+  a:"-o écrit le résultat dans un nouveau fichier au lieu de modifier l'original. Vérification : refaire diff a b et comparer à sw.diff ; s'ils sont identiques, b est correct par définition."},
+ {q:"Quelle est la différence entre clé publique et clé privée, et laquelle rends-tu ?",
+  a:"La privée reste sur ma machine et résout le défi du serveur ; elle ne se partage jamais. La publique se distribue librement et sert au serveur à vérifier. Je rends la publique, copiée sous le nom id_ed25519_pub."},
+ {q:"Un camarade dit : « tout est sur mon disque, je pousserai à la fin ». Que réponds-tu ?",
+  a:"Que la correction automatique clone le dépôt distant et ne voit jamais son disque : sans add, commit et push, son travail n'existe pas. Et qu'attendre la fin, c'est découvrir trop tard une clé SSH cassée ou un mauvais dépôt."}
+];
+
+/* ==========================================================================
+   3. ÉTAT + PERSISTANCE
+   ========================================================================== */
+const KEY='shell00lab_v1';
+let S={xp:0, rooms:{}, srs:{}, streak:0, last:null, viva:{}};
+
+const store={
+  async get(){
+    try{ if(window.storage){ const r=await window.storage.get(KEY); return r&&r.value?JSON.parse(r.value):null; } }catch(e){}
+    try{ const v=window.localStorage&&localStorage.getItem(KEY); return v?JSON.parse(v):null; }catch(e){}
+    return null;
+  },
+  async set(v){
+    const s=JSON.stringify(v);
+    try{ if(window.storage){ await window.storage.set(KEY,s); return; } }catch(e){}
+    try{ if(window.localStorage) localStorage.setItem(KEY,s); }catch(e){}
+  }
+};
+function today(){ return new Date().toISOString().slice(0,10); }
+function save(){ store.set(S); }
+
+/* --- répétition espacée : boîtes de Leitner, intervalles en jours --- */
+const BOXES=[0,1,3,7,16];
+function srsAdd(id,ok){
+  const e=S.srs[id]||{box:0};
+  e.box = ok ? Math.min(4,e.box+1) : 0;
+  const d=new Date(); d.setDate(d.getDate()+BOXES[e.box]);
+  e.due=d.toISOString().slice(0,10);
+  S.srs[id]=e; save();
+}
+function srsDue(){
+  const t=today();
+  return Object.keys(S.srs).filter(k=>!S.srs[k].due||S.srs[k].due<=t);
+}
+function allQuestions(){
+  const out=[];
+  ROOMS.forEach(r=>r.steps.forEach((s,i)=>{
+    if(s.k==='mcq'||s.k==='input') out.push({id:r.id+'.'+i, room:r, step:s});
+  }));
+  return out;
+}
+
+/* ==========================================================================
+   4. RENDU
+   ========================================================================== */
+const $=s=>document.querySelector(s);
+const home=$('#home'), roomview=$('#roomview'), roomHead=$('#roomHead'), roomBody=$('#roomBody');
+
+function roomState(r){ return S.rooms[r.id]||{done:0, cleared:false}; }
+function nTasks(r){ return r.steps.filter(s=>s.k!=='lesson'&&s.k!=='bits'&&s.k!=='inode').length||1; }
+function firstUncleared(){ for(let i=0;i<ROOMS.length;i++) if(!roomState(ROOMS[i]).cleared) return i; return ROOMS.length; }
+
+function roomMode(r){
+  const st=roomState(r), n=nTasks(r);
+  const frac=Math.min(1,st.done/n);
+  const bits=Math.round(frac*9);
+  let s='-';
+  for(let i=0;i<9;i++) s += i<bits ? 'rwxrwxrwx'[i] : '-';
+  return s;
+}
+function renderHome(){
+  $('#xpN').textContent=S.xp;
+  $('#strN').textContent=S.streak;
+  const cleared=ROOMS.filter(r=>roomState(r).cleared).length;
+  $('#rmN').textContent=cleared+'/'+ROOMS.length;
+
+  const body=$('#lsbody'); body.innerHTML='';
+  ROOMS.forEach((r,i)=>{
+    const st=roomState(r), open=i<=firstUncleared();
+    const b=document.createElement('button');
+    b.className='lsrow'+(st.cleared?' done':(st.done?' part':''));
+    b.disabled=!open;
+    b.innerHTML=
+      `<span class="mode">${roomMode(r)}</span>`+
+      `<span class="nl">${i+1}</span>`+
+      `<span class="nm"><b>${r.file}</b><span class="t">${r.title}</span></span>`+
+      `<span class="badge">${st.cleared?'✓ validée':open?(st.done?st.done+'/'+nTasks(r):r.tag):'🔒'}</span>`;
+    b.onclick=()=>openRoom(i);
+    body.appendChild(b);
+  });
+  $('#totalLine').textContent='total '+ROOMS.length+' salles — '+
+    (cleared===ROOMS.length?'chmod 777 : tout est allumé.':'les salles suivantes s\'ouvrent au fur et à mesure.');
+
+  const due=srsDue().length, known=Object.keys(S.srs).length;
+  $('#srsT').textContent = due? `${due} question${due>1?'s':''} à revoir aujourd'hui` : 'Rien à revoir pour le moment';
+  $('#srsS').textContent = known
+    ? `${known} questions en mémoire — les ratées reviennent vite, les acquises s'espacent (1, 3, 7, 16 jours).`
+    : `Réponds aux questions des salles : elles entrent dans la file de révision espacée.`;
+  $('#srsBtn').disabled = due===0;
+}
+
+function toast(txt){
+  const d=document.createElement('div');
+  d.textContent=txt;
+  d.style.cssText='position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--amber);color:var(--amber2);padding:9px 18px;border-radius:5px;font-size:.82rem;z-index:9;box-shadow:0 6px 24px rgba(0,0,0,.55)';
+  document.body.appendChild(d);
+  setTimeout(()=>d.remove(),2200);
+}
+function award(n){ S.xp+=n; $('#xpN').textContent=S.xp; save(); }
+
+/* ---------------- ouverture d'une salle ---------------- */
+let CUR=null;
+function openRoom(idx){
+  const r=ROOMS[idx]; CUR={r, idx, done:0, total:nTasks(r)};
+  home.classList.add('hidden'); roomview.classList.remove('hidden');
+  window.scrollTo(0,0);
+  roomHead.innerHTML=
+    `<div class="roomhead"><div class="eyebrow">salle ${idx+1} / ${ROOMS.length} &nbsp;·&nbsp; ${r.tag}</div>
+     <h2>${r.title}</h2><p>${r.sub}</p><div class="steps" id="stepdots"></div></div>`;
+  roomBody.innerHTML='';
+  r.steps.forEach((s,i)=>roomBody.appendChild(buildStep(r,s,i)));
+  drawDots();
+}
+function drawDots(){
+  const el=$('#stepdots'); if(!el) return;
+  el.innerHTML='';
+  for(let i=0;i<CUR.total;i++){
+    const d=document.createElement('div');
+    d.className='stepdot'+(i<CUR.done?' done':i===CUR.done?' cur':'');
+    el.appendChild(d);
+  }
+}
+function taskDone(ok){
+  CUR.done++; drawDots();
+  if(CUR.r.id==='srs'){
+    award(ok?6:2);
+    if(CUR.done>=CUR.total){
+      const d=document.createElement('div'); d.className='done';
+      d.innerHTML='<div class="big">révision terminée</div>'+
+        '<div class="sub">Les questions ratées reviennent demain, les autres s\'espacent.</div><div class="row"></div>';
+      const b=document.createElement('button'); b.className='btn'; b.textContent='retour au menu';
+      b.onclick=goHome; d.querySelector('.row').appendChild(b);
+      roomBody.appendChild(d); renderHome();
+      setTimeout(()=>d.scrollIntoView({behavior:'smooth',block:'center'}),60);
+    }
+    return;
+  }
+  const st=S.rooms[CUR.r.id]||{done:0,cleared:false};
+  st.done=Math.max(st.done,CUR.done);
+  if(CUR.done>=CUR.total){ st.cleared=true; }
+  S.rooms[CUR.r.id]=st;
+  award(ok?10:4);
+  save();
+  if(CUR.done>=CUR.total) roomBody.appendChild(buildDone());
+}
+function buildDone(){
+  const d=document.createElement('div'); d.className='done';
+  const next=CUR.idx+1<ROOMS.length?ROOMS[CUR.idx+1]:null;
+  d.innerHTML=`<div class="big">salle validée — ${CUR.r.file}</div>
+   <div class="sub">Tu sais la faire. La vraie question : sauras-tu l'expliquer sans écran ?</div>
+   <div class="row"></div>`;
+  const row=d.querySelector('.row');
+  const b1=document.createElement('button'); b1.className='btn ghost'; b1.textContent='refaire';
+  b1.onclick=()=>openRoom(CUR.idx);
+  row.appendChild(b1);
+  if(next){ const b2=document.createElement('button'); b2.className='btn'; b2.textContent='salle suivante : '+next.file;
+    b2.onclick=()=>openRoom(CUR.idx+1); row.appendChild(b2); }
+  else { const b2=document.createElement('button'); b2.className='btn'; b2.textContent='retour au menu';
+    b2.onclick=goHome; row.appendChild(b2); }
+  renderHome();
+  setTimeout(()=>d.scrollIntoView({behavior:'smooth',block:'center'}),60);
+  return d;
+}
+function goHome(){ roomview.classList.add('hidden'); home.classList.remove('hidden'); renderHome(); window.scrollTo(0,0); }
+$('#backBtn').onclick=goHome;
+
+/* ---------------- constructeurs d'étapes ---------------- */
+function buildStep(r,s,i){
+  const c=document.createElement('div'); c.className='card';
+  if(s.k==='lesson'){ c.innerHTML=`<h3>${s.h}</h3>${s.b}`; return c; }
+  if(s.k==='bits'){ c.innerHTML=`<h3>${s.h}</h3><p>${s.b}</p>`; c.appendChild(bitWidget()); return c; }
+  if(s.k==='inode'){ c.innerHTML=`<h3>${s.h}</h3><p>${s.b}</p>`; c.appendChild(inodeWidget()); return c; }
+  if(s.k==='viva'){ return vivaBlock(); }
+
+  const qid=r.id+'.'+i;
+  if(s.k==='mcq'||s.k==='input') c.appendChild(qBlock(s,qid));
+  if(s.k==='term')   c.appendChild(termBlock(s));
+  if(s.k==='answer') c.appendChild(answerBlock(s));
+  return c;
+}
+
+function fbEl(){ const f=document.createElement('div'); f.className='fb'; return f; }
+
+function qBlock(s,qid){
+  const w=document.createElement('div');
+  w.innerHTML=`<div class="tasklab">QUESTION</div><div class="qtext">${s.q}</div>`;
+  const fb=fbEl();
+  const settle=ok=>{
+    fb.classList.add('show');
+    fb.innerHTML=(ok?'<span class="good">✓ juste</span>':'<span class="bad">✗ raté</span>')+
+                 `<span class="why">${s.why}</span>`;
+    srsAdd(qid,ok); taskDone(ok);
+  };
+  if(s.k==='mcq'){
+    const o=document.createElement('div'); o.className='opts';
+    s.opts.forEach((t,oi)=>{
+      const b=document.createElement('button'); b.className='opt'; b.innerHTML=t;
+      b.onclick=()=>{
+        o.querySelectorAll('.opt').forEach(x=>x.disabled=true);
+        if(oi===s.a){ b.classList.add('right'); settle(true); }
+        else{ b.classList.add('wrong'); o.children[s.a].classList.add('right'); settle(false); }
+      };
+      o.appendChild(b);
+    });
+    w.appendChild(o);
+  }else{
+    const row=document.createElement('div'); row.className='inrow';
+    row.innerHTML='<span class="ps">%&gt;</span>';
+    const inp=document.createElement('input'); inp.spellcheck=false; inp.autocomplete='off'; inp.autocapitalize='off';
+    const go=document.createElement('button'); go.className='btn'; go.textContent='valider';
+    const submit=()=>{
+      if(go.disabled) return;
+      const v=inp.value.trim().replace(/\s+/g,' ');
+      go.disabled=true; inp.disabled=true;
+      const ok = s.accept ? s.accept(v) : s.a.some(x=>x.toLowerCase()===v.toLowerCase());
+      fb.classList.add('show');
+      fb.innerHTML=(ok?'<span class="good">✓ juste</span>':`<span class="bad">✗ raté — attendu : <code>${s.a[0]}</code></span>`)+
+                   `<span class="why">${s.why}</span>`;
+      srsAdd(qid,ok); taskDone(ok);
+    };
+    go.onclick=submit;
+    inp.addEventListener('keydown',e=>{ if(e.key==='Enter') submit(); });
+    row.appendChild(inp); row.appendChild(go);
+    w.appendChild(row);
+  }
+  w.appendChild(fb);
+  return w;
+}
+
+function answerBlock(s){
+  const w=document.createElement('div');
+  w.innerHTML=`<div class="tasklab">${s.h.toUpperCase()}</div><div class="qtext">${s.q}</div>`;
+  const btn=document.createElement('button'); btn.className='btn ghost'; btn.textContent='j\'ai répondu, montrer le modèle';
+  const box=document.createElement('div'); box.className='answerbox hidden';
+  box.innerHTML=`<div class="lab">réponse modèle</div>${s.a}`;
+  const row=document.createElement('div'); row.style.cssText='display:flex;gap:8px;margin-top:10px;flex-wrap:wrap';
+  btn.onclick=()=>{
+    box.classList.remove('hidden'); btn.classList.add('hidden');
+    const ok=document.createElement('button'); ok.className='btn'; ok.textContent='c\'était ça';
+    const no=document.createElement('button'); no.className='btn ghost'; no.textContent='pas encore';
+    ok.onclick=()=>{ row.innerHTML='<span style="color:var(--ok);font-size:.82rem">✓ acquis</span>'; taskDone(true); };
+    no.onclick=()=>{ row.innerHTML='<span style="color:var(--amber);font-size:.82rem">à retravailler ce soir</span>'; taskDone(false); };
+    row.appendChild(ok); row.appendChild(no);
+  };
+  w.appendChild(btn); w.appendChild(box); w.appendChild(row);
+  return w;
+}
+
+/* ---------------- bloc terminal ---------------- */
+function termBlock(s){
+  const w=document.createElement('div');
+  w.innerHTML=`<div class="tasklab">MISSION</div><div class="qtext">${s.brief}</div>`;
+  const sh=newShell(s.setup);
+  const hist=[];
+  let solved=false, hintIdx=0;
+
+  const t=document.createElement('div'); t.className='term';
+  t.innerHTML=`<div class="termbar"><span>simulateur — les commandes sont réellement exécutées</span><span class="goal">${s.goal}</span></div>`;
+  const out=document.createElement('div'); out.className='termout';
+  const line=document.createElement('div'); line.className='terminline';
+  line.innerHTML='<span class="p">%&gt;</span>';
+  const inp=document.createElement('input'); inp.spellcheck=false; inp.autocomplete='off'; inp.autocapitalize='off';
+  line.appendChild(inp);
+  const foot=document.createElement('div'); foot.className='termfoot';
+  const hb=document.createElement('button'); hb.className='hintbtn'; hb.textContent='indice (−3 xp)';
+  const status=document.createElement('span'); status.textContent='tape help pour la liste des commandes';
+  foot.appendChild(status); foot.appendChild(hb);
+  t.appendChild(out); t.appendChild(line); t.appendChild(foot);
+
+  const print=(html,cls)=>{ const d=document.createElement('div'); if(cls)d.className=cls; d.innerHTML=html; out.appendChild(d); out.scrollTop=out.scrollHeight; };
+  const esc=x=>String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  print('<span class="sys">Mission : '+s.goal+'. Le système de fichiers est simulé, tes commandes ont de vrais effets.</span>');
+
+  const hintBox=document.createElement('div');
+  hb.onclick=()=>{
+    if(hintIdx>=s.hints.length) return;
+    const h=document.createElement('div'); h.className='hint'; h.innerHTML='indice '+(hintIdx+1)+' — '+s.hints[hintIdx];
+    hintBox.appendChild(h);
+    hintIdx++;
+    S.xp=Math.max(0,S.xp-3); $('#xpN').textContent=S.xp; save();
+    if(hintIdx>=s.hints.length){ hb.disabled=true; hb.textContent='plus d\'indice'; }
+  };
+
+  inp.addEventListener('keydown',e=>{
+    if(e.key!=='Enter') return;
+    const cmd=inp.value.trim(); inp.value='';
+    if(!cmd) return;
+    print('<span class="cmd"><span class="p">%&gt;</span> '+esc(cmd)+'</span>');
+    hist.push(cmd);
+    const r=run(sh,cmd);
+    if(r&&r.err) print(esc(r.err),'err');
+    else if(r&&r.out) print(esc(r.out).replace(/\n$/,''));
+    if(!solved && s.check(sh,hist)){
+      solved=true; inp.disabled=true;
+      print('<span class="sys">✓ objectif atteint.</span>');
+      status.textContent='mission accomplie';
+      if(s.post){ const p=document.createElement('div'); p.className='hint'; p.innerHTML=s.post; hintBox.appendChild(p); }
+      taskDone(hintIdx===0);
+    }
+  });
+
+  w.appendChild(t); w.appendChild(hintBox);
+  return w;
+}
+
+/* ---------------- widget : bits de permission ---------------- */
+function bitWidget(){
+  const w=document.createElement('div');
+  const state=[[1,1,0],[1,0,0],[1,0,0]];
+  const names=['propriétaire','groupe','autres'];
+  const grid=document.createElement('div'); grid.className='bitgrid';
+  const outEl=document.createElement('div'); outEl.className='bitout';
+  const valEls=[];
+  names.forEach((nm,gi)=>{
+    const g=document.createElement('div'); g.className='grp';
+    g.innerHTML=`<div class="lab">${nm}</div>`;
+    const row=document.createElement('div'); row.className='row';
+    ['r','w','x'].forEach((L,bi)=>{
+      const b=document.createElement('button'); b.className='bit'; b.textContent=L;
+      b.setAttribute('aria-pressed','false');
+      b.onclick=()=>{ state[gi][bi]=state[gi][bi]?0:1; upd(); };
+      row.appendChild(b);
+    });
+    const v=document.createElement('div'); v.className='val'; valEls.push(v);
+    g.appendChild(row); g.appendChild(v); grid.appendChild(g);
+  });
+  function upd(){
+    let letters='', oct='';
+    names.forEach((_,gi)=>{
+      const [r,wq,x]=state[gi];
+      const n=r*4+wq*2+x*1;
+      valEls[gi].textContent=n; oct+=n;
+      letters+=(r?'r':'-')+(wq?'w':'-')+(x?'x':'-');
+      const row=grid.children[gi].querySelector('.row');
+      [r,wq,x].forEach((on,bi)=>{ row.children[bi].classList.toggle('on',!!on);
+        row.children[bi].setAttribute('aria-pressed',on?'true':'false'); });
+    });
+    outEl.innerHTML=`-${letters} &nbsp;=&nbsp; chmod <span class="oct">${oct}</span>`;
+  }
+  w.appendChild(grid); w.appendChild(outEl); upd();
+  return w;
+}
+
+/* ---------------- widget : inode ---------------- */
+function inodeWidget(){
+  const w=document.createElement('div'); w.className='inodewrap';
+  let alive={hardA:true, hardB:true, symTarget:true, sym:true};
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('viewBox','0 0 660 220');
+  w.appendChild(svg);
+  const msg=document.createElement('div'); msg.className='inodemsg';
+  const ctl=document.createElement('div'); ctl.className='inodectl';
+
+  function box(x,y,wd,ht,label,sub,on,dashed){
+    const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+    const r=document.createElementNS('http://www.w3.org/2000/svg','rect');
+    r.setAttribute('x',x);r.setAttribute('y',y);r.setAttribute('width',wd);r.setAttribute('height',ht);
+    r.setAttribute('rx','5');
+    r.setAttribute('fill', on?'#26303c':'#1a212a');
+    r.setAttribute('stroke', on?'#e5533d':'#2f3a47');
+    if(dashed) r.setAttribute('stroke-dasharray','5 4');
+    g.appendChild(r);
+    const t=document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x',x+wd/2);t.setAttribute('y',y+ht/2+(sub?-4:5));
+    t.setAttribute('text-anchor','middle');
+    t.setAttribute('font-family','ui-monospace,monospace');t.setAttribute('font-size','13');
+    t.setAttribute('fill', on?'#e5533d':'#485462');
+    t.textContent=label; g.appendChild(t);
+    if(sub){ const s2=document.createElementNS('http://www.w3.org/2000/svg','text');
+      s2.setAttribute('x',x+wd/2);s2.setAttribute('y',y+ht/2+14);s2.setAttribute('text-anchor','middle');
+      s2.setAttribute('font-family','ui-monospace,monospace');s2.setAttribute('font-size','10');
+      s2.setAttribute('fill', on?'#8c99a9':'#3e4b5a'); s2.textContent=sub; g.appendChild(s2); }
+    svg.appendChild(g);
+  }
+  function arrow(x1,y1,x2,y2,on,dashed){
+    const l=document.createElementNS('http://www.w3.org/2000/svg','line');
+    l.setAttribute('x1',x1);l.setAttribute('y1',y1);l.setAttribute('x2',x2);l.setAttribute('y2',y2);
+    l.setAttribute('stroke', on?'#e5533d':'#2f3a47');l.setAttribute('stroke-width','1.5');
+    if(dashed) l.setAttribute('stroke-dasharray','4 4');
+    svg.appendChild(l);
+    const h=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    h.setAttribute('cx',x2);h.setAttribute('cy',y2);h.setAttribute('r','3');
+    h.setAttribute('fill', on?'#e5533d':'#2f3a47'); svg.appendChild(h);
+  }
+  function draw(){
+    svg.innerHTML='';
+    const t1=document.createElementNS('http://www.w3.org/2000/svg','text');
+    t1.setAttribute('x','165');t1.setAttribute('y','18');t1.setAttribute('text-anchor','middle');
+    t1.setAttribute('font-family','ui-monospace,monospace');t1.setAttribute('font-size','11');
+    t1.setAttribute('fill','#5f6c7d');t1.textContent='LIEN DUR  (ln a b)';svg.appendChild(t1);
+    const t2=document.createElementNS('http://www.w3.org/2000/svg','text');
+    t2.setAttribute('x','495');t2.setAttribute('y','18');t2.setAttribute('text-anchor','middle');
+    t2.setAttribute('font-family','ui-monospace,monospace');t2.setAttribute('font-size','11');
+    t2.setAttribute('fill','#5f6c7d');t2.textContent='LIEN SYMBOLIQUE  (ln -s a b)';svg.appendChild(t2);
+
+    box(20,40,110,38,'nom : a', alive.hardA?'':'supprimé', alive.hardA);
+    box(20,105,110,38,'nom : b', alive.hardB?'':'supprimé', alive.hardB);
+    const inodeAlive = alive.hardA||alive.hardB;
+    box(190,70,130,48,'inode #4211', inodeAlive?'contenu vivant':'contenu détruit', inodeAlive);
+    if(alive.hardA) arrow(130,59,190,86,true);
+    if(alive.hardB) arrow(130,124,190,102,true);
+
+    box(350,40,110,38,'nom : a', alive.symTarget?'':'supprimé', alive.symTarget);
+    box(350,105,130,38,'lien : b', alive.sym?'contient « a »':'', alive.sym);
+    box(540,70,100,48,'inode #7702', alive.symTarget?'contenu':'détruit', alive.symTarget);
+    if(alive.symTarget) arrow(460,59,540,86,true);
+    if(alive.sym) arrow(480,124,540,102,alive.symTarget,true);
+    if(alive.sym&&!alive.symTarget){
+      const x=document.createElementNS('http://www.w3.org/2000/svg','text');
+      x.setAttribute('x','510');x.setAttribute('y','160');x.setAttribute('text-anchor','middle');
+      x.setAttribute('font-family','ui-monospace,monospace');x.setAttribute('font-size','11');
+      x.setAttribute('fill','#ff5f56');x.textContent='lien mort';svg.appendChild(x);
+    }
+  }
+  function mk(label,fn){ const b=document.createElement('button'); b.className='btn ghost'; b.textContent=label;
+    b.onclick=()=>{ fn(); draw(); }; ctl.appendChild(b); }
+  mk('rm a  (côté dur)',()=>{ alive.hardA=false;
+    msg.innerHTML=alive.hardB?'Le nom <b>a</b> disparaît, mais <b>b</b> pointe toujours sur l\'inode : le contenu vit. Le compteur de liens passe de 2 à 1.':'Plus aucun nom : le contenu est détruit.'; });
+  mk('rm a  (côté symbolique)',()=>{ alive.symTarget=false;
+    msg.innerHTML='Le lien <b>b</b> existe encore et pèse toujours 1 octet, mais son texte « a » ne mène plus nulle part : <b>lien mort</b>.'; });
+  mk('remettre à zéro',()=>{ alive={hardA:true,hardB:true,symTarget:true,sym:true}; msg.textContent=''; });
+  draw();
+  w.appendChild(ctl); w.appendChild(msg);
+  return w;
+}
+
+/* ---------------- soutenance ---------------- */
+function vivaBlock(){
+  const w=document.createElement('div');
+  let i=0, good=0;
+  const card=document.createElement('div'); card.className='card';
+  w.appendChild(card);
+  function show(){
+    if(i>=VIVA.length){
+      card.innerHTML=`<h3>Fin de la soutenance blanche</h3>
+        <p>Score honnête : <b>${good}/${VIVA.length}</b>.</p>
+        <p>${good>=8?'Tu es prêt à te faire corriger par un humain. Va le faire, c\'est la seule vraie répétition.'
+        :'Reprends les salles correspondant à ce que tu n\'as pas su dire. Puis reviens.'}</p>`;
+      const st=S.rooms['r10']||{done:0,cleared:false};
+      st.done=1; st.cleared=good>=7; S.rooms['r10']=st; save(); renderHome();
+      return;
+    }
+    const q=VIVA[i];
+    card.innerHTML=`<div class="tasklab">QUESTION ${i+1} / ${VIVA.length}</div>
+      <div class="qtext">${q.q}</div>
+      <p style="font-size:.8rem;color:var(--mute)">Réponds à voix haute, en entier, avant de révéler.</p>`;
+    const rv=document.createElement('button'); rv.className='btn ghost'; rv.textContent='révéler';
+    const box=document.createElement('div'); box.className='answerbox hidden';
+    box.innerHTML=`<div class="lab">ce qu'un correcteur attend</div>${q.a}`;
+    const row=document.createElement('div'); row.style.cssText='display:flex;gap:8px;margin-top:11px;flex-wrap:wrap';
+    rv.onclick=()=>{
+      box.classList.remove('hidden'); rv.classList.add('hidden');
+      const y=document.createElement('button'); y.className='btn'; y.textContent='j\'avais dit ça';
+      const n=document.createElement('button'); n.className='btn ghost'; n.textContent='pas encore';
+      y.onclick=()=>{ good++; award(10); i++; show(); };
+      n.onclick=()=>{ i++; show(); };
+      row.appendChild(y); row.appendChild(n);
+    };
+    card.appendChild(rv); card.appendChild(box); card.appendChild(row);
+  }
+  show();
+  return w;
+}
+
+/* ---------------- révision espacée ---------------- */
+$('#srsBtn').onclick=()=>{
+  const due=new Set(srsDue());
+  const pool=allQuestions().filter(q=>due.has(q.id));
+  if(!pool.length){ toast('rien à revoir'); return; }
+  pool.sort(()=>Math.random()-0.5);
+  home.classList.add('hidden'); roomview.classList.remove('hidden'); window.scrollTo(0,0);
+  CUR={r:{id:'srs'}, idx:-1, done:0, total:pool.length};
+  roomHead.innerHTML=`<div class="roomhead"><div class="eyebrow">révision espacée</div>
+    <h2>${pool.length} question${pool.length>1?'s':''} à revoir</h2>
+    <p>Mélangées entre les salles, exprès. Réviser un thème à la fois donne l'illusion de savoir.</p>
+    <div class="steps" id="stepdots"></div></div>`;
+  roomBody.innerHTML='';
+  pool.forEach(q=>{ const c=document.createElement('div'); c.className='card';
+    c.appendChild(qBlock(q.step, q.id)); roomBody.appendChild(c); });
+  drawDots();
+};
+
+/* ---------------- sauvegarde manuelle ---------------- */
+function encodeState(){
+  const json=JSON.stringify({x:S.xp,r:S.rooms,s:S.srs,k:S.streak,l:S.last});
+  return btoa(unescape(encodeURIComponent(json))).replace(/=+$/,'');
+}
+function decodeState(code){
+  const c=code.trim().replace(/\s+/g,'');
+  const pad='='.repeat((4-c.length%4)%4);
+  const o=JSON.parse(decodeURIComponent(escape(atob(c+pad))));
+  if(typeof o.x!=='number'||typeof o.r!=='object') throw new Error('structure inattendue');
+  return {xp:o.x, rooms:o.r||{}, srs:o.s||{}, streak:o.k||0, last:o.l||null, viva:{}};
+}
+const ioBox=$('#ioBox'), ioTxt=$('#ioTxt'), ioMsg=$('#ioMsg');
+let ioMode='exp';
+function openIO(mode){
+  ioMode=mode; ioBox.classList.remove('hidden'); ioMsg.textContent='';
+  $('#ioGo').classList.toggle('hidden',mode==='exp');
+  if(mode==='exp'){
+    ioTxt.value=encodeState(); ioTxt.select();
+    try{ document.execCommand('copy'); ioMsg.textContent='copié — colle-le dans une note, tu le garderas'; }
+    catch(e){ ioMsg.textContent='sélectionne tout et copie à la main'; }
+    if(navigator.clipboard) navigator.clipboard.writeText(ioTxt.value).catch(()=>{});
+  }else{
+    ioTxt.value=''; ioTxt.placeholder='colle ton code de sauvegarde ici'; ioTxt.focus();
+  }
+  ioBox.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+$('#expBtn').onclick=()=>openIO('exp');
+$('#impBtn').onclick=()=>openIO('imp');
+$('#ioClose').onclick=()=>ioBox.classList.add('hidden');
+$('#ioGo').onclick=()=>{
+  try{
+    const st=decodeState(ioTxt.value);
+    S=Object.assign(S,st); save(); renderHome();
+    ioMsg.textContent='progression restaurée';
+    ioMsg.style.color='var(--ok)';
+  }catch(e){
+    ioMsg.textContent='code illisible : '+(e.message||e);
+    ioMsg.style.color='var(--ko)';
+  }
+};
+
+/* ---------------- démarrage ---------------- */
+(async function init(){
+  const saved=await store.get();
+  if(saved) S=Object.assign(S,saved);
+  const t=today();
+  if(S.last!==t){
+    const y=new Date(); y.setDate(y.getDate()-1);
+    S.streak = (S.last===y.toISOString().slice(0,10)) ? (S.streak||0)+1 : 1;
+    S.last=t; save();
+  }
+  renderHome();
+})();
+</script>
+</body>
+</html>
