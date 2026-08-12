@@ -267,7 +267,7 @@ steps:[
 ]},
 
 {
-id:'r8', file:'diffpatch', tag:'ex07', title:'diff et patch',
+id:'r8', file:'diffpatch', optionnel:true, tag:'ex07', title:'diff et patch',
 sub:'Une recette de transformation, et la machine qui l\'applique.',
 steps:[
  {k:'lesson',h:'Deux commandes réciproques',b:`
@@ -299,7 +299,7 @@ steps:[
 ]},
 
 {
-id:'r9', file:'find', tag:'ex08', title:'find : tester puis agir',
+id:'r9', file:'find', optionnel:true, tag:'ex08', title:'find : tester puis agir',
 sub:'Une seule commande qui filtre et agit, sans aucun chaînage.',
 steps:[
  {k:'lesson',h:'Tests et actions',b:`

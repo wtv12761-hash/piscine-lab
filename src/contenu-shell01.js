@@ -238,7 +238,7 @@ steps:[
 ]},
 
 {
-id:'s7', file:'tri', tag:'concept', title:'Trier, trancher, retourner',
+id:'s7', file:'tri', optionnel:true, tag:'concept', title:'Trier, trancher, retourner',
 sub:'sort, head, tail, rev : et le piège qui les sépare.',
 steps:[
  {k:'lesson',h:'Quatre outils voisins',b:`

@@ -70,8 +70,28 @@ function questionsRejouables(){
    2. OUTILS DE RENDU
    ========================================================================== */
 const $ = s => document.querySelector(s);
+/* Un emoji rendu par la police du système n'est pas une icône : il change de
+   dessin d'un appareil à l'autre et s'aligne mal. Tracé à la main, il est
+   stable partout. */
+const CADENAS = '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" focusable="false">'+
+  '<path fill="none" stroke="currentColor" stroke-width="1.4" d="M4.4 7V4.8a3.6 3.6 0 0 1 7.2 0V7"/>'+
+  '<rect x="2.9" y="7" width="10.2" height="6.6" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>';
+
+function separateurFacultatif(){
+  const d = document.createElement('div');
+  d.className = 'coupure';
+  d.innerHTML = "<span>à partir d'ici, c'est facultatif</span>" +
+    "<p>Le sujet s'arrête aux exercices obligatoires et te laisse le choix : " +
+    'continuer pour aller plus loin, ou passer au module suivant. Le module est ' +
+    'validé sans ces salles, et rien ne reste verrouillé derrière elles.</p>';
+  return d;
+}
 const echappe = x => String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-const etiquette = txt => { const d=document.createElement('div'); d.className='lab'; d.textContent=txt; return d; };
+/* Une pastille, et seulement quand elle apprend quelque chose que le contenu
+   ne dit pas déjà. L'ancienne étiquette en capitales suivie d'un filet
+   horizontal apparaissait sur chaque bloc, y compris là où le contenu était
+   évident : c'était de la décoration répétée, pas de la signalisation. */
+const pastille = (txt, gris) => '<span class="tag'+(gris?' gris':'')+'">'+txt+'</span>';
 const elVerdict = () => { const d=document.createElement('div'); d.className='verdict'; return d; };
 
 /* `ton` vaut 'note' pour une question, 'devine' pour une prédiction. Se
@@ -94,9 +114,22 @@ function nTaches(r){
   return r.steps.filter(s => !['lesson','bits','inode','ascii','mem'].includes(s.k)).length || 1;
 }
 function etatSalle(r){ return S.rooms[r.id] || {done:0, cleared:false}; }
-function premiereNonFaite(){
-  for(let i=0;i<ROOMS.length;i++) if(!etatSalle(ROOMS[i]).cleared) return i;
-  return ROOMS.length;
+
+/* Le sujet arrête les exercices obligatoires avant la fin : après un certain
+   point, l'école dit explicitement qu'on peut continuer OU passer au projet
+   suivant. Le lab doit dire la même chose, sinon il enferme là où le sujet
+   libère. Les salles marquées `optionnel` ne bloquent donc rien : elles ne
+   comptent pas dans l'avancement du module, et surtout elles ne verrouillent
+   pas ce qui vient après, y compris la soutenance blanche. */
+const obligatoires = () => ROOMS.filter(r => !r.optionnel);
+const finiesObligatoires = () => obligatoires().filter(r => etatSalle(r).cleared).length;
+const moduleTermine = () => finiesObligatoires() === obligatoires().length;
+
+/* Une salle s'ouvre quand toutes les salles OBLIGATOIRES qui la précèdent sont
+   validées. Sauter les facultatives ne ferme donc aucune porte. */
+function salleOuverte(i){
+  for(let k=0;k<i;k++) if(!ROOMS[k].optionnel && !etatSalle(ROOMS[k]).cleared) return false;
+  return true;
 }
 function bitsDe(fraction){
   const n = Math.round(Math.min(1,fraction)*9);
@@ -112,37 +145,45 @@ const vueAccueil = $('#accueil'), vueSalle = $('#salle');
 const teteSalle = $('#teteSalle'), corpsSalle = $('#corpsSalle');
 
 function peindreAccueil(){
-  const finies = ROOMS.filter(r => etatSalle(r).cleared).length;
-  $('#compteSalles').textContent = finies + ' / ' + ROOMS.length + ' salles';
+  const oblig = obligatoires().length, finies = finiesObligatoires();
+  const extras = ROOMS.filter(r => r.optionnel && etatSalle(r).cleared).length;
+  const nExtras = ROOMS.filter(r => r.optionnel).length;
+  $('#compteSalles').textContent = finies + ' / ' + oblig + ' obligatoires'
+    + (nExtras ? '  ·  ' + extras + ' / ' + nExtras + ' en plus' : '');
   const barre = $('#bitsModule');
   barre.innerHTML='';
-  bitsDe(finies/ROOMS.length).split('').forEach(c => {
+  bitsDe(finies/oblig).split('').forEach(c => {
     const s=document.createElement('span'); s.textContent=c;
     if(c!=='-') s.className='on'; barre.appendChild(s);
   });
-  barre.setAttribute('aria-label', finies+' salles validées sur '+ROOMS.length);
+  barre.setAttribute('aria-label', finies+' salles obligatoires validées sur '+oblig);
 
   const corps = $('#lsbody'); corps.innerHTML='';
-  const courante = premiereNonFaite();
+  const courante = ROOMS.findIndex((r,i) => !r.optionnel && !etatSalle(r).cleared);
+  const courante_ = courante < 0 ? ROOMS.length : courante;
   /* Sur un écran de téléphone, dix lignes dont neuf inertes remplissent tout
      l'espace sans rien apprendre. On montre ce qui est ouvert, plus la salle
      suivante pour savoir où l'on va, et on replie le reste derrière un bouton.
      Rien n'est caché définitivement : le repli est un pli, pas une porte. */
-  const limite = Math.min(ROOMS.length, courante + 2);
+  const limite = Math.min(ROOMS.length, Math.max(courante_ + 2, 3));
   const ligne = (r,i) => {
-    const st = etatSalle(r), ouverte = i <= courante;
+    const st = etatSalle(r), ouverte = salleOuverte(i);
     const b = document.createElement('button');
     b.className = 'lsrow' + (st.cleared?' done':(st.done?' part':''));
     b.disabled = !ouverte;
     b.innerHTML =
       '<span class="mode">'+ (st.cleared ? '-rwxrwxrwx' : '-'+bitsDe(st.done/nTaches(r))) +'</span>'+
       '<span class="nm"><b>'+r.file+'</b><span>'+r.title+'</span></span>'+
-      '<span class="badge">'+(st.cleared ? '✓' : ouverte ? (st.done ? st.done+'/'+nTaches(r) : r.tag) : '🔒')+'</span>';
-    if(!ouverte) b.setAttribute('aria-label', r.file+' : verrouillée, termine la salle précédente');
+      '<span class="badge">'+(st.cleared ? '✓' : ouverte ? (st.done ? st.done+'/'+nTaches(r) : r.tag) : CADENAS)+'</span>';
+    if(r.optionnel) b.classList.add('extra');
+    if(!ouverte) b.setAttribute('aria-label', r.file+' : verrouillée, termine la salle obligatoire précédente');
     b.onclick = () => ouvrirSalle(i);
     return b;
   };
-  ROOMS.slice(0, limite).forEach((r,i) => corps.appendChild(ligne(r,i)));
+  ROOMS.slice(0, limite).forEach((r,i) => {
+    if(r.optionnel && (i===0 || !ROOMS[i-1].optionnel)) corps.appendChild(separateurFacultatif());
+    corps.appendChild(ligne(r,i));
+  });
   const reste = ROOMS.length - limite;
   if(reste > 0){
     const plus = document.createElement('button');
@@ -151,12 +192,20 @@ function peindreAccueil(){
     plus.textContent = 'voir les ' + reste + ' salle' + (reste>1?'s':'') + ' suivante' + (reste>1?'s':'');
     plus.onclick = () => {
       plus.remove();
-      ROOMS.slice(limite).forEach((r,k) => corps.appendChild(ligne(r, limite+k)));
+      ROOMS.slice(limite).forEach((r,k) => {
+        const i = limite+k;
+        if(r.optionnel && (i===0 || !ROOMS[i-1].optionnel)) corps.appendChild(separateurFacultatif());
+        corps.appendChild(ligne(r, i));
+      });
     };
     corps.appendChild(plus);
   }
-  $('#totalLigne').textContent = 'total '+ROOMS.length+' salles — ' +
-    (finies===ROOMS.length ? 'chmod 777 : tout est allumé.' : 'les suivantes s\'ouvrent au fur et à mesure.');
+  $('#totalLigne').textContent = moduleTermine()
+    ? (extras === nExtras
+        ? 'Module validé, salles en plus comprises. chmod 777.'
+        : 'Module validé. Les salles en plus restent ouvertes si tu veux les faire.')
+    : oblig + ' salles obligatoires' + (nExtras ? ', puis ' + nExtras + ' en plus si tu veux' : '')
+      + '. Les suivantes s\'ouvrent au fur et à mesure.';
 
   const dues = srsDues().length, connues = Object.keys(S.srs).length;
   const avecAide = Object.keys(S.aide).length;
@@ -277,26 +326,25 @@ function construireEtape(r, s, i){
 }
 
 function blocLecon(s){
-  const w=document.createElement('div'); w.className='step';
-  const n=document.createElement('div'); n.className='notion';
-  n.appendChild(etiquette('NOTION'));
-  n.insertAdjacentHTML('beforeend','<h2>'+s.h+'</h2>'+s.b);
-  w.appendChild(n); return w;
+  const w=document.createElement('div'); w.className='step notion';
+  w.innerHTML='<h2>'+s.h+'</h2>'+s.b;
+  return w;
 }
 function blocWidget(s, fabrique){
-  const w=document.createElement('div'); w.className='step';
-  const c=document.createElement('div'); c.className='box';
-  c.appendChild(etiquette('À MANIPULER'));
-  c.insertAdjacentHTML('beforeend','<h2>'+s.h+'</h2><p>'+s.b+'</p>');
-  c.appendChild(fabrique());
-  w.appendChild(c); return w;
+  const w=document.createElement('div'); w.className='step acte';
+  w.innerHTML='<h2>'+s.h+'</h2><p class="intro">'+s.b+'</p>';
+  w.appendChild(fabrique());
+  return w;
 }
 
 function blocChoix(s, id, titre, ton){
-  const w=document.createElement('div'); w.className='step';
-  const c=document.createElement('div'); c.className='box';
-  c.appendChild(etiquette(titre));
-  c.insertAdjacentHTML('beforeend','<div class="q">'+s.q+'</div>');
+  const w=document.createElement('div'); w.className='step acte';
+  const c=w;
+  // La pastille ne subsiste que pour la prédiction, où elle change la consigne :
+  // on devine avant de savoir. Une question ordinaire n'a pas besoin qu'on lui
+  // écrive « question » au-dessus.
+  c.insertAdjacentHTML('beforeend',
+    (ton==='devine' ? pastille('DEVINE AVANT DE SAVOIR') : '') + '<div class="q">'+s.q+'</div>');
   const o=document.createElement('div'); o.className='opts'; o.setAttribute('role','group');
   const v=elVerdict();
   s.opts.forEach((t,oi)=>{
@@ -308,6 +356,7 @@ function blocChoix(s, id, titre, ton){
       b.classList.add(ok?'right':'wrong');
       if(!ok) o.children[s.a].classList.add('right');
       poseVerdict(v, ok, undefined, undefined, s.why, ton);
+      w.dataset.etat = ok ? 'fait' : 'rate';
       // Une réponse fausse n'est pas « avec aide » : seul un indice demandé
       // compte comme de l'aide. Se tromper fait partie du travail.
       srsAdd(id, ok, false);
@@ -315,7 +364,7 @@ function blocChoix(s, id, titre, ton){
     };
     o.appendChild(b);
   });
-  c.appendChild(o); c.appendChild(v); w.appendChild(c); return w;
+  c.appendChild(o); c.appendChild(v); return w;
 }
 
 /* « Trouve l'erreur » : on montre un travail plausible mais faux et on demande
@@ -324,10 +373,9 @@ function blocChoix(s, id, titre, ton){
    Les erreurs viennent de celles que la suite de tests attrape déjà, donc de
    fautes réellement commises et non inventées pour l'exercice. */
 function blocDiagnostic(s, id){
-  const w=document.createElement('div'); w.className='step';
-  const c=document.createElement('div'); c.className='box';
-  c.appendChild(etiquette("TROUVE L'ERREUR"));
-  c.insertAdjacentHTML('beforeend',
+  const w=document.createElement('div'); w.className='step acte';
+  const c=w;
+  c.insertAdjacentHTML('beforeend', pastille("TROUVE L'ERREUR") +
     '<div class="q">'+s.contexte+'</div>'+
     '<pre class="faute" aria-label="le travail à diagnostiquer">'+echappe(s.code)+'</pre>'+
     '<div class="q" style="margin-top:12px">'+s.q+'</div>');
@@ -342,18 +390,18 @@ function blocDiagnostic(s, id){
       b.classList.add(ok?'right':'wrong');
       if(!ok) o.children[s.a].classList.add('right');
       poseVerdict(v, ok, undefined, undefined, s.why, 'note');
+      w.dataset.etat = ok ? 'fait' : 'rate';
       srsAdd(id, ok, false);
       tacheFinie(false);
     };
     o.appendChild(b);
   });
-  c.appendChild(o); c.appendChild(v); w.appendChild(c); return w;
+  c.appendChild(o); c.appendChild(v); return w;
 }
 
 function blocSaisie(s, id){
-  const w=document.createElement('div'); w.className='step';
-  const c=document.createElement('div'); c.className='box';
-  c.appendChild(etiquette('QUESTION'));
+  const w=document.createElement('div'); w.className='step acte';
+  const c=w;
   c.insertAdjacentHTML('beforeend','<div class="q">'+s.q+'</div>');
   const row=document.createElement('div'); row.className='answer';
   const inp=document.createElement('input');
@@ -367,22 +415,24 @@ function blocSaisie(s, id){
     go.disabled=true; inp.disabled=true;
     const ok = s.accept ? s.accept(val) : s.a.some(x=>x.toLowerCase()===val.toLowerCase());
     poseVerdict(v, ok, s.a[0], val, s.why, 'note');
+    w.dataset.etat = ok ? 'fait' : 'rate';
     srsAdd(id, ok, false);
     tacheFinie(false);
   };
   go.onclick=valider;
   inp.addEventListener('keydown',e=>{ if(e.key==='Enter') valider(); });
   row.appendChild(inp); row.appendChild(go);
-  c.appendChild(row); c.appendChild(v); w.appendChild(c); return w;
+  c.appendChild(row); c.appendChild(v); return w;
 }
 
 /* Question orale. Elle entre désormais dans la file de révision : la note
    vient d'une soutenance, et ce qu'on n'a pas su dire doit revenir. */
 function blocOral(s, id){
-  const w=document.createElement('div'); w.className='step';
-  const c=document.createElement('div'); c.className='box';
-  c.appendChild(etiquette((s.h||'À DIRE À VOIX HAUTE').toUpperCase()));
-  c.insertAdjacentHTML('beforeend','<div class="q">'+s.q+'</div>');
+  const w=document.createElement('div'); w.className='step acte';
+  const c=w;
+  // Ici la pastille informe vraiment : elle change ce qu'on attend de toi,
+  // répondre à voix haute et non dans sa tête.
+  c.insertAdjacentHTML('beforeend', pastille('À VOIX HAUTE')+'<div class="q">'+s.q+'</div>');
   const btn=document.createElement('button'); btn.className='btn ghost'; btn.type='button';
   btn.textContent='j\'ai répondu, montrer le modèle';
   const boite=document.createElement('div'); boite.className='answerbox hidden';
@@ -394,13 +444,13 @@ function blocOral(s, id){
     const oui=document.createElement('button'); oui.className='btn'; oui.type='button'; oui.textContent='je l\'ai dit';
     const non=document.createElement('button'); non.className='btn ghost'; non.type='button'; non.textContent='pas encore';
     oui.onclick=()=>{ row.innerHTML='<span style="color:var(--ok);font-size:.83rem">✓ acquis</span>';
-      srsAdd(id,true,false); tacheFinie(false); };
+      w.dataset.etat='fait'; srsAdd(id,true,false); tacheFinie(false); };
     non.onclick=()=>{ row.innerHTML='<span style="color:var(--amber2);font-size:.83rem">à retravailler, ça repasse aujourd\'hui</span>';
-      srsAdd(id,false,false); tacheFinie(false); };
+      w.dataset.etat='rate'; srsAdd(id,false,false); tacheFinie(false); };
     row.appendChild(oui); row.appendChild(non);
   };
   c.appendChild(btn); c.appendChild(boite); c.appendChild(row);
-  w.appendChild(c); return w;
+  return w;
 }
 
 /* ==========================================================================
@@ -476,10 +526,9 @@ function panneauCriteres(v, sh, hist, aTente){
    7. MISSION DANS LE TERMINAL
    ========================================================================== */
 function blocMission(s, id){
-  const w=document.createElement('div'); w.className='step';
-  const c=document.createElement('div'); c.className='box mission';
-  c.appendChild(etiquette('MISSION'));
-  c.insertAdjacentHTML('beforeend',
+  const w=document.createElement('div'); w.className='step acte mission';
+  const c=w;
+  c.insertAdjacentHTML('beforeend', pastille('MISSION') +
     '<div class="goal">'+(s.goalHtml || s.goal)+'</div><div class="brief">'+s.brief+'</div>');
 
   const sh = newShell(s.setup);
@@ -524,8 +573,11 @@ function blocMission(s, id){
      propre système de fichiers de départ. Un terminal partagé devrait se
      réinitialiser entre les missions ou mélanger les états, ce qui serait
      plus déroutant que répétitif. L'en-tête sert à les distinguer. */
+  // La barre du terminal affiche ce qu'affiche un vrai terminal : où l'on est.
+  // Elle répétait « MISSION », déjà écrit juste au-dessus.
   const titre=document.createElement('div'); titre.className='termtitre';
-  titre.innerHTML='<span>'+(s.terminal||'SIMULATEUR')+'</span><span class="pwd">~/'+(s.dossier||'travail')+'</span>';
+  titre.innerHTML='<span class="pwd">student@campus:~/'+(s.dossier||'travail')+'</span>'+
+                  '<span>simulateur</span>';
   const out=document.createElement('div'); out.className='termout';
   out.setAttribute('role','log'); out.setAttribute('aria-live','polite');
   const ligne=document.createElement('div'); ligne.className='termline';
@@ -557,6 +609,7 @@ function blocMission(s, id){
       // ce qui donne un sens réel au marquage « avec aide », au lieu d'un
       // simple affichage qui n'agirait sur rien.
       if(id) srsAdd(id, true, iIndice>0);
+      w.dataset.etat='fait';
       tacheFinie(iIndice>0);
     }
   }
@@ -585,7 +638,7 @@ function blocMission(s, id){
   c.appendChild(diff); c.appendChild(term); c.appendChild(zoneIndices);
   ecris('<span class="sys">Système de fichiers simulé. Tes commandes ont de vrais effets.</span>');
   rafraichir();
-  w.appendChild(c); return w;
+  return w;
 }
 
 /* ==========================================================================
@@ -594,10 +647,9 @@ function blocMission(s, id){
    Le retour cas par cas existait déjà et il est bon : on ne change que son
    apparence pour l'aligner sur le reste, pas ce qu'il fait. */
 function blocCode(s, id){
-  const w=document.createElement('div'); w.className='step';
-  const c=document.createElement('div'); c.className='box mission';
-  c.appendChild(etiquette('MISSION'));
-  c.insertAdjacentHTML('beforeend',
+  const w=document.createElement('div'); w.className='step acte mission';
+  const c=w;
+  c.insertAdjacentHTML('beforeend', pastille('MISSION') +
     '<div class="brief">'+s.brief+'</div><div class="sig">signature imposée : <b>'+echappe(s.sig)+'</b></div>');
   const ed=document.createElement('textarea');
   ed.className='code'; ed.spellcheck=false; ed.autocapitalize='off'; ed.autocomplete='off';
@@ -658,11 +710,12 @@ function blocCode(s, id){
       res.appendChild(ok);
       if(s.post){ const p=document.createElement('div'); p.className='hint'; p.innerHTML=s.post; zoneIndices.appendChild(p); }
       if(id) srsAdd(id, true, iIndice>0);
+      w.dataset.etat='fait';
       tacheFinie(iIndice>0);
     }
   };
   c.appendChild(ed); c.appendChild(barre); c.appendChild(res); c.appendChild(zoneIndices);
-  w.appendChild(c); return w;
+  return w;
 }
 
 /* ==========================================================================
@@ -693,8 +746,7 @@ function blocViva(){
       return;
     }
     const q=VIVA[i];
-    carte.innerHTML='';
-    carte.appendChild(etiquette('QUESTION '+(i+1)+' SUR '+VIVA.length));
+    carte.innerHTML=pastille('QUESTION '+(i+1)+' / '+VIVA.length, true);
     carte.insertAdjacentHTML('beforeend','<div class="q">'+q.q+'</div>'+
       '<p style="font-size:.8rem;color:var(--mute)">À voix haute, en entier, avant de révéler.</p>');
     const rev=document.createElement('button'); rev.className='btn ghost'; rev.type='button'; rev.textContent='révéler';

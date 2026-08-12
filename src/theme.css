@@ -75,6 +75,14 @@ button{font-family:var(--mono);font-size:1rem;color:inherit}
 .lsrow .badge{font-size:.74rem;color:var(--mute);flex:none}
 .lsrow.done .badge{color:var(--ok)}
 .total{padding:2px 15px 11px;font-size:.77rem;color:var(--mute)}
+.coupure{margin:14px 5px 8px;padding:11px 12px;border-top:1px dashed var(--line2);
+  border-bottom:1px dashed var(--line2)}
+.coupure span{display:block;font-size:.72rem;letter-spacing:1.1px;color:var(--amber2);font-weight:700}
+.coupure p{font-size:.79rem;color:var(--dim);margin-top:5px;line-height:1.55}
+.lsrow.extra .nm b{font-weight:400}
+.lsrow.extra .mode{opacity:.7}
+.lsrow .badge svg{display:block;color:var(--lock)}
+
 .voirplus{width:100%;min-height:var(--tap);background:none;border:1px dashed var(--line2);
   border-radius:5px;color:var(--mute);font-size:.79rem;cursor:pointer;margin-top:4px}
 .voirplus:hover{border-color:var(--amber2);color:var(--amber2)}
@@ -86,32 +94,45 @@ button{font-family:var(--mono);font-size:1rem;color:inherit}
 .panneau .s{font-size:.78rem;color:var(--dim);margin-top:3px}
 .panneau .actions{display:flex;gap:8px;flex-wrap:wrap}
 
-/* ---------- rythme d'une salle ---------- */
-.step{margin-top:14px}
-.lab{font-size:.7rem;letter-spacing:1.4px;color:var(--mute);display:flex;align-items:center;gap:7px;margin-bottom:7px}
-.lab::after{content:'';flex:1;height:1px;background:var(--line)}
-/* NOTION : pas de cadre. Une leçon est du texte, pas un objet. */
-.notion{padding:2px 2px 4px}
-.notion h2{font-size:.97rem;color:var(--ink);margin-bottom:8px}
-.notion p{margin-bottom:9px;font-size:.92rem;color:var(--dim)}
+/* ---------- rythme d'une salle ----------
+   Principe : trois poids visuels, pas un de plus.
+     - une notion est du texte, elle n'a aucun cadre ;
+     - ce qui demande une action porte un filet vertical à gauche, dont la
+       couleur dit l'état ;
+     - la mission, seule, est accentuée.
+   Il n'y a plus d'étiquette en capitales suivie d'un trait horizontal sur
+   chaque bloc : répétée huit fois par salle, elle n'apportait aucune
+   information et fabriquait l'essentiel du bruit. Le type d'un bloc se lit
+   maintenant à sa forme et à son contenu. */
+.step{margin-top:22px}
+.step:first-child{margin-top:8px}
+
+/* NOTION : rien qu'un titre et du texte. */
+.notion h2{font-size:1.02rem;color:var(--ink);margin-bottom:9px;letter-spacing:-.1px}
+.notion p{margin-bottom:10px;font-size:.93rem;color:var(--dim);max-width:64ch}
 .notion p:last-child{margin-bottom:0}
-.notion ul{margin:8px 0 10px 19px;font-size:.9rem;color:var(--dim)}
-.notion li{margin-bottom:5px}
-.notion b,.notion strong{color:var(--ink);font-weight:700}
-/* Les blocs qui demandent une action ont un cadre. */
-.box{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px}
-.box h2{font-size:.97rem;margin-bottom:6px}
-.box>p{font-size:.88rem;color:var(--dim);margin-bottom:12px}
-/* MISSION : le seul élément à bord accentué. C'est le cœur de la salle. */
-.mission{border-left:3px solid var(--amber);
-  background:linear-gradient(90deg,rgba(229,83,61,.07),transparent 60%),var(--panel)}
-.mission .lab{color:var(--amber2)}
-.mission .lab::after{background:rgba(229,83,61,.3)}
-.goal{font-size:.93rem;margin-bottom:10px}
+.notion ul{margin:9px 0 11px 18px;font-size:.91rem;color:var(--dim);max-width:64ch}
+.notion li{margin-bottom:6px}
+.notion b,.notion strong{color:var(--ink);font-weight:600}
+
+/* ACTION : filet vertical, dont la couleur porte l'état. */
+.acte{border-left:2px solid var(--line2);padding-left:15px}
+.acte[data-etat="fait"]{border-left-color:var(--ok)}
+.acte[data-etat="rate"]{border-left-color:var(--ko)}
+.acte h2{font-size:.98rem;margin-bottom:7px}
+.acte>p.intro{font-size:.88rem;color:var(--dim);margin-bottom:13px;max-width:60ch}
+
+/* MISSION : le seul élément accentué de la salle. */
+.acte.mission{border-left-color:var(--amber);border-left-width:3px}
+.tag{display:inline-block;font-size:.67rem;letter-spacing:1.2px;font-weight:700;
+  color:var(--amber2);background:rgba(229,83,61,.13);border-radius:3px;
+  padding:2px 7px;margin-bottom:9px;vertical-align:2px}
+.tag.gris{color:var(--mute);background:var(--panel2)}
+.goal{font-size:.97rem;margin-bottom:9px;font-weight:600;letter-spacing:-.1px}
 .goal em{color:var(--amber2);font-style:normal}
-.brief{font-size:.87rem;color:var(--dim)}
-.sig{font-size:.82rem;color:var(--mute);margin:10px 0 2px}
-.sig b{color:var(--amber2)}
+.brief{font-size:.89rem;color:var(--dim);max-width:60ch}
+.sig{font-size:.83rem;color:var(--mute);margin:11px 0 0}
+.sig b{color:var(--amber2);font-weight:600}
 
 /* ---------- attendu contre obtenu ---------- */
 .diff{margin:12px 0 4px;border:1px solid var(--line2);border-radius:var(--r);overflow:hidden}
@@ -167,7 +188,7 @@ button{font-family:var(--mono);font-size:1rem;color:inherit}
 .term{background:#0f141b;border:1px solid var(--line2);border-radius:var(--r);overflow:hidden;margin-top:12px}
 .termtitre{display:flex;justify-content:space-between;gap:10px;align-items:center;background:var(--panel2);
   padding:7px 12px;font-size:.72rem;letter-spacing:.6px;color:var(--mute);border-bottom:1px solid var(--line)}
-.termtitre .pwd{color:var(--lock);white-space:nowrap}
+.termtitre .pwd{color:var(--amber2);white-space:nowrap;letter-spacing:0}
 .termout{padding:11px 12px;font-size:.82rem;max-height:230px;overflow-y:auto;white-space:pre-wrap;
   word-break:break-word;-webkit-overflow-scrolling:touch}
 .termout>div{margin-bottom:2px}
@@ -196,7 +217,7 @@ textarea.code:focus{border-color:var(--amber2);outline:none}
   font-size:.83rem;white-space:pre-wrap;word-break:break-word;color:var(--ink);overflow-x:auto}
 
 /* ---------- questions ---------- */
-.q{font-size:.93rem;margin-bottom:12px}
+.q{font-size:.96rem;margin-bottom:13px;max-width:60ch;line-height:1.55}
 .opts{display:flex;flex-direction:column;gap:8px}
 .opt{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);padding:11px 13px;
   cursor:pointer;text-align:left;color:var(--ink);font-size:.88rem;min-height:var(--tap);

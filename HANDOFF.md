@@ -92,6 +92,26 @@ Ce n'est pas un site de solutions. C'est un lab d'entraînement : on y apprend l
 3. **Chaque salle se termine par une question de concept**, pas par une manipulation.
    La salle finale de chaque module (`boss: true`) est une auto-évaluation orale.
 
+3 bis. **Les exercices facultatifs du sujet le restent dans le lab.** Les sujets
+   s'arrêtent avant la fin et disent explicitement qu'on peut continuer ou passer au
+   projet suivant. Une salle qui correspond à un exercice situé après ce jalon porte
+   `optionnel:true`. Conséquences, toutes dans `src/app.js` :
+   - elle ne compte pas dans l'avancement du module ;
+   - elle ne verrouille rien derrière elle, **soutenance blanche comprise** ;
+   - la liste affiche une coupure explicite avant la première d'entre elles.
+
+   Les jalons, relevés dans les PDF :
+
+   | Module | Obligatoires | Facultatifs | Salles marquées |
+   |---|---|---|---|
+   | Shell 00 | ex00 à ex05 | ex06 à ex09 | `diffpatch`, `find` |
+   | Shell 01 | ex01 à ex05 | ex06 à ex08 | `tri` |
+   | C 00 | ex00 à ex04 | ex05 à ex08 | `imbrique`, `nombres` |
+   | C 01 | tous | **aucun** | — |
+
+   C 01 n'a pas de jalon : ses neuf exercices sont tous obligatoires. Ne pas en
+   inventer un par symétrie avec les autres modules.
+
 4. **Les tests doivent attraper l'erreur classique**, pas seulement valider le cas nominal.
    Voir §9.
 
@@ -451,15 +471,34 @@ Cinq à huit salles par module, jamais plus : au-delà l'étudiant ne finit pas.
 
 ## 11. Design
 
-Palette ardoise bleutée, accent rouge, inspirée du mode sombre de TryHackMe.
-Variables CSS en tête de chaque page. Ne pas réintroduire de texture de fond :
-la version précédente avait des rayures de scanline, jugées fatigantes et retirées.
+Palette ardoise bleutée, accent rouge. Tout en `ui-monospace`. Le thème est dans
+`src/theme.css`, écrit une fois. Ne pas réintroduire de texture de fond : la version
+d'avant avait des rayures de scanline, jugées fatigantes.
 
-Tout en `ui-monospace`. La progression du menu est une sortie de `ls -l` dont les bits
-de permission s'allument au fur et à mesure — le clin d'œil est aussi un rappel du cours.
+**Trois poids visuels, pas un de plus.** C'est la règle qui tient tout le reste :
 
-Le téléphone est la cible principale : garder les grilles qui s'empilent sous 560 px
-et les zones tactiles confortables.
+1. une **notion** est du texte : aucun cadre, aucune étiquette ;
+2. ce qui **demande une action** porte un filet vertical à gauche, dont la couleur dit
+   l'état (neutre, vert, rouge) ;
+3. la **mission** est le seul élément accentué de la salle.
+
+Une version précédente coiffait chaque bloc d'une étiquette en capitales suivie d'un
+filet horizontal traversant la carte : `QUESTION ————————`. Répétée huit fois par
+salle, elle n'apportait aucune information et fabriquait l'essentiel du bruit. Les
+pastilles qui subsistent (`MISSION`, `À VOIX HAUTE`, `DEVINE AVANT DE SAVOIR`,
+`TROUVE L'ERREUR`) ne restent que là où elles changent ce qu'on attend du lecteur.
+**Ne pas réintroduire d'étiquette décorative.**
+
+**Pas d'emoji en guise d'icône.** Un emoji est rendu par la police du système : son
+dessin change d'un appareil à l'autre et son alignement est imprévisible. Le cadenas
+des salles verrouillées est un SVG tracé à la main.
+
+La progression du menu est une sortie de `ls -l` dont les bits de permission s'allument
+au fur et à mesure : le clin d'œil est aussi un rappel du cours.
+
+Le téléphone est la cible principale. Les mesures sont faites sur un cadre de 375 px
+réels, pas estimées : aucun débordement horizontal, aucune zone tactile sous 44 px,
+contrastes au-dessus de 4,5 pour tout texte.
 
 ---
 

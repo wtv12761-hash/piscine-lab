@@ -10,13 +10,13 @@
    modules en cours, en menant directement là où le travail s'est arrêté. */
 
 const MODULES = [
-  { cle:'shell00lab_v1', page:'shell00.html', nom:'Shell 00', salles:10,
+  { cle:'shell00lab_v1', page:'shell00.html', nom:'Shell 00', salles:10, facultatives:['r8','r9'],
     desc:"Redirection, permissions et octal, liens durs et symboliques, clés SSH, le manuel, git, diff et patch, find." },
-  { cle:'shell01lab_v1', page:'shell01.html', nom:'Shell 01', salles:8,
+  { cle:'shell01lab_v1', page:'shell01.html', nom:'Shell 01', salles:8, facultatives:['s7'],
     desc:"Pipes, filtres de texte, compter, variables d'environnement, guillemets et échappement, tri." },
-  { cle:'c00lab_v1', page:'c00.html', nom:'C 00', salles:6,
+  { cle:'c00lab_v1', page:'c00.html', nom:'C 00', salles:6, facultatives:['c4','c5'],
     desc:"write et l'adresse, le caractère comme nombre, boucles et conditions, boucles imbriquées, extraction de chiffres." },
-  { cle:'c01lab_v1', page:'c01.html', nom:'C 01', salles:6,
+  { cle:'c01lab_v1', page:'c01.html', nom:'C 01', salles:6, facultatives:[],
     desc:"Adresse et déréférencement, pointeurs multiples, paramètres de sortie, chaînes et zéro final, tableaux." },
 ];
 
@@ -39,36 +39,42 @@ function peindre(){
 
   MODULES.forEach(m => {
     const S = lire(m.cle);
-    const finies = S && S.rooms
-      ? Object.keys(S.rooms).filter(k => S.rooms[k] && S.rooms[k].cleared).length : 0;
+    /* On ne compte que les salles obligatoires : le sujet lui-même s'arrête
+       avant la fin et laisse le choix de continuer. Un module doit donc
+       pouvoir être terminé sans les salles en plus. */
+    const faites = S && S.rooms ? Object.keys(S.rooms).filter(k => S.rooms[k] && S.rooms[k].cleared) : [];
+    const oblig = m.salles - m.facultatives.length;
+    const finies = faites.filter(k => !m.facultatives.includes(k)).length;
+    const extras = faites.filter(k => m.facultatives.includes(k)).length;
     const dus = S && S.srs
       ? Object.values(S.srs).filter(e => !e.due || e.due <= aujourdhui()).length : 0;
-    totalDus += dus; totalFinies += Math.min(finies, m.salles); totalSalles += m.salles;
+    totalDus += dus; totalFinies += Math.min(finies, oblig); totalSalles += oblig;
 
     const a = document.createElement('a');
-    a.className = 'lsrow' + (finies >= m.salles ? ' done' : (finies ? ' part' : ''));
+    a.className = 'lsrow' + (finies >= oblig ? ' done' : (finies ? ' part' : ''));
     a.href = m.page;
     const etat = !S ? 'jamais ouvert ici'
-      : finies >= m.salles ? 'terminé'
-      : finies + '/' + m.salles + ' salles';
+      : finies >= oblig ? (extras ? 'terminé · ' + extras + ' en plus' : 'terminé')
+      : finies + '/' + oblig + ' salles';
     a.innerHTML =
-      '<span class="mode">' + (finies >= m.salles ? '-rwxrwxrwx' : '-' + bitsDe(finies/m.salles)) + '</span>' +
+      '<span class="mode">' + (finies >= oblig ? '-rwxrwxrwx' : '-' + bitsDe(finies/oblig)) + '</span>' +
       '<span class="nm"><b>' + m.nom + '</b><span>' + m.desc + '</span></span>' +
-      '<span class="badge">' + (finies >= m.salles ? '✓' : etat.split(' ')[0]) + '</span>';
+      '<span class="badge">' + (finies >= oblig ? '✓' : etat.split(' ')[0]) + '</span>';
     a.setAttribute('aria-label', m.nom + ', ' + etat + (dus ? ', ' + dus + ' à revoir' : ''));
     corps.appendChild(a);
 
     // On reprend là où il reste du travail : le premier module entamé mais non
     // terminé, sinon le premier module non terminé.
-    if(!repriseCible && S && finies > 0 && finies < m.salles){
+    if(!repriseCible && S && finies > 0 && finies < oblig){
       repriseCible = m; repriseTexte = m.nom + ', ' + etat;
     }
   });
   if(!repriseCible){
     for(const m of MODULES){
       const S = lire(m.cle);
-      const finies = S && S.rooms ? Object.keys(S.rooms).filter(k => S.rooms[k] && S.rooms[k].cleared).length : 0;
-      if(finies < m.salles){ repriseCible = m; repriseTexte = m.nom + (finies ? ', ' + finies + '/' + m.salles + ' salles' : ', pas encore commencé'); break; }
+      const oblig = m.salles - m.facultatives.length;
+      const finies = S && S.rooms ? Object.keys(S.rooms).filter(k => S.rooms[k] && S.rooms[k].cleared && !m.facultatives.includes(k)).length : 0;
+      if(finies < oblig){ repriseCible = m; repriseTexte = m.nom + (finies ? ', ' + finies + '/' + oblig + ' salles' : ', pas encore commencé'); break; }
     }
   }
 

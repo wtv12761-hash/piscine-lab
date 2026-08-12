@@ -102,7 +102,7 @@ steps:[
 ]},
 
 {
-id:'c4', file:'imbrique', tag:'concept', title:'Boucles imbriquées',
+id:'c4', file:'imbrique', optionnel:true, tag:'concept', title:'Boucles imbriquées',
 sub:'Deux compteurs, et la condition qui évite les doublons.',
 steps:[
  {k:'lesson',h:'Un compteur dans un compteur',b:`
@@ -133,7 +133,7 @@ steps:[
 ]},
 
 {
-id:'c5', file:'nombres', tag:'concept', title:'Afficher un nombre',
+id:'c5', file:'nombres', optionnel:true, tag:'concept', title:'Afficher un nombre',
 sub:'Extraire les chiffres avec / et %, et le piège de l\'ordre.',
 steps:[
  {k:'lesson',h:'Deux opérateurs, un problème d\'ordre',b:`
