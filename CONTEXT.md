@@ -95,9 +95,17 @@ comportement nominal ne sert presque à rien. Ceux qui comptent sont ceux qui at
 la faute qu'on va commettre : la borne `<` au lieu de `<=`, le zéro non traité,
 l'oubli de la variable temporaire, la boucle intérieure qui part de zéro.
 
-**Des indices payants et progressifs.** Trois indices par mission, du vague au précis,
-à 3 xp pièce. Le dernier ne doit jamais être la réponse copiable. Objectif : rendre
-l'aide disponible mais légèrement coûteuse, pour qu'on essaie d'abord.
+**Des indices progressifs, et qui coûtent quelque chose.** Trois indices par mission,
+du vague au précis. Le dernier ne doit jamais être la réponse copiable. Objectif :
+rendre l'aide disponible mais légèrement coûteuse, pour qu'on essaie d'abord.
+
+Ils se payaient en xp. Les xp ont été supprimés, avec le compteur de jours consécutifs :
+un total qui ne sert qu'à acheter des indices ressemble à un score sans en être un, et
+une série qu'on entretient pour la série n'apprend rien. Le coût est désormais réel et
+non symbolique : une tâche résolue avec un indice **retombe en boîte 0** de la révision
+espacée, donc elle repasse dans la session du jour, et elle est comptée « avec aide » à
+la fin de la salle. Un marquage qui n'agirait sur rien serait exactement le faux signal
+qu'on voulait éviter.
 
 **Une salle finale d'auto-évaluation orale par module.** C'est la répétition générale
 de la soutenance. C'est aussi le seul endroit où l'on reprend les vraies valeurs du
