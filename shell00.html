@@ -1,0 +1,2315 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>shell00.lab — salles d'entraînement</title>
+<style>
+/* Thème du lab. Écrit une fois, intégré dans chaque page à la construction.
+
+   Palette d'origine conservée : ardoise bleutée, accent rouge, tout en
+   monospace. Deux valeurs ont été remontées parce qu'elles échouaient au
+   seuil AA de contraste (4,5) alors qu'elles portaient toutes les étiquettes
+   de l'interface : --mute passait à 2,86 sur --panel, --lock à 1,98.
+   Mesuré, pas estimé. */
+:root{
+  --bg:#141920; --bg2:#1a212a; --panel:#1e2630; --panel2:#26303c;
+  --line:#2f3a47; --line2:#3e4b5a;
+  --amber:#e5533d; --amber2:#ff7d68;
+  --ink:#d8dfe8; --dim:#8c99a9;
+  --mute:#8f9cad;   /* 5,47 sur --panel */
+  --lock:#7a8697;   /* 4,13 sur --panel */
+  --ok:#3ddc84; --ko:#ff5f56;
+  --mono:ui-monospace,'JetBrains Mono','Cascadia Code','Fira Code',Menlo,Consolas,monospace;
+  --r:6px;
+  --tap:44px;       /* zone tactile minimale */
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--mono);font-size:15px;line-height:1.6;
+  -webkit-font-smoothing:antialiased;padding-bottom:env(safe-area-inset-bottom)}
+/* nowrap : un mode comme -r--rwx--x contient des tirets, et le navigateur
+   coupe volontiers une ligne après un tiret. Le mode se retrouvait scindé,
+   illisible pour une notion qui se lit par groupes de trois. */
+code{background:#0f141b;padding:1px 5px;border-radius:3px;color:var(--amber2);font-size:.88em;white-space:nowrap}
+code.long{white-space:normal;word-break:break-word}
+b{color:var(--amber2);font-weight:700}
+a{color:var(--amber2)}
+button{font-family:var(--mono);font-size:1rem;color:inherit}
+.hidden{display:none!important}
+:focus-visible{outline:2px solid var(--amber2);outline-offset:2px;border-radius:3px}
+/* Le site doit rester utilisable sans animation. */
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+.wrap{max-width:760px;margin:0 auto;padding:0 14px 96px}
+
+/* ---------- en-têtes ---------- */
+.rhead{position:sticky;top:0;z-index:5;background:rgba(20,25,32,.94);backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--line);margin:0 -14px;padding:10px 14px 9px}
+.rhead .l1{display:flex;align-items:center;gap:10px}
+.rhead .l2{display:flex;align-items:center;gap:10px;margin-top:8px}
+.rhead h1{font-size:1.02rem;font-weight:700;letter-spacing:.3px;flex:1;min-width:0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.back{background:none;border:1px solid var(--line2);color:var(--dim);border-radius:var(--r);
+  min-width:var(--tap);min-height:var(--tap);padding:0 11px;cursor:pointer;font-size:.85rem;flex:none}
+.back:hover{border-color:var(--amber2);color:var(--amber2)}
+
+/* La progression EST le cours : les bits de permission s'allument. */
+.bits{display:flex;gap:2px;font-size:.9rem;letter-spacing:1px}
+.bits span{color:var(--lock);width:.72em;text-align:center}
+.bits span.on{color:var(--ok)}
+.count{font-size:.78rem;color:var(--mute);margin-left:auto}
+
+/* ---------- accueil du module : la liste des salles ---------- */
+.brand{font-size:.78rem;color:var(--mute);padding:16px 0 4px}
+.brand .u{color:var(--amber2)}
+.brand h1{font-size:1.3rem;color:var(--ink);letter-spacing:.5px;margin-top:3px}
+.lsbox{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin-top:14px}
+.lshead{background:var(--panel2);padding:8px 14px;font-size:.74rem;color:var(--mute);border-bottom:1px solid var(--line)}
+.lsbody{padding:6px}
+.lsrow{display:flex;align-items:center;gap:11px;width:100%;text-align:left;background:none;
+  border:1px solid transparent;border-radius:5px;padding:10px 9px;cursor:pointer;color:var(--ink);
+  min-height:var(--tap)}
+.lsrow:hover:not(:disabled){background:var(--panel2);border-color:var(--line2)}
+.lsrow:disabled{cursor:not-allowed}
+.lsrow .mode{color:var(--lock);letter-spacing:.5px;white-space:nowrap;font-size:.8rem;flex:none}
+.lsrow.part .mode{color:var(--amber2)} .lsrow.done .mode{color:var(--ok)}
+.lsrow .nm{flex:1;min-width:0}
+.lsrow .nm b{color:inherit;font-weight:700;font-size:.9rem}
+.lsrow .nm span{display:block;color:var(--dim);font-size:.78rem;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lsrow:disabled .nm b,.lsrow:disabled .nm span{color:var(--lock)}
+.lsrow .badge{font-size:.74rem;color:var(--mute);flex:none}
+.lsrow.done .badge{color:var(--ok)}
+.total{padding:2px 15px 11px;font-size:.77rem;color:var(--mute)}
+.voirplus{width:100%;min-height:var(--tap);background:none;border:1px dashed var(--line2);
+  border-radius:5px;color:var(--mute);font-size:.79rem;cursor:pointer;margin-top:4px}
+.voirplus:hover{border-color:var(--amber2);color:var(--amber2)}
+
+.panneau{margin-top:12px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+  padding:13px 14px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.panneau.accent{border-left:3px solid var(--amber)}
+.panneau .t{font-size:.88rem}
+.panneau .s{font-size:.78rem;color:var(--dim);margin-top:3px}
+.panneau .actions{display:flex;gap:8px;flex-wrap:wrap}
+
+/* ---------- rythme d'une salle ---------- */
+.step{margin-top:14px}
+.lab{font-size:.7rem;letter-spacing:1.4px;color:var(--mute);display:flex;align-items:center;gap:7px;margin-bottom:7px}
+.lab::after{content:'';flex:1;height:1px;background:var(--line)}
+/* NOTION : pas de cadre. Une leçon est du texte, pas un objet. */
+.notion{padding:2px 2px 4px}
+.notion h2{font-size:.97rem;color:var(--ink);margin-bottom:8px}
+.notion p{margin-bottom:9px;font-size:.92rem;color:var(--dim)}
+.notion p:last-child{margin-bottom:0}
+.notion ul{margin:8px 0 10px 19px;font-size:.9rem;color:var(--dim)}
+.notion li{margin-bottom:5px}
+.notion b,.notion strong{color:var(--ink);font-weight:700}
+/* Les blocs qui demandent une action ont un cadre. */
+.box{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px}
+.box h2{font-size:.97rem;margin-bottom:6px}
+.box>p{font-size:.88rem;color:var(--dim);margin-bottom:12px}
+/* MISSION : le seul élément à bord accentué. C'est le cœur de la salle. */
+.mission{border-left:3px solid var(--amber);
+  background:linear-gradient(90deg,rgba(229,83,61,.07),transparent 60%),var(--panel)}
+.mission .lab{color:var(--amber2)}
+.mission .lab::after{background:rgba(229,83,61,.3)}
+.goal{font-size:.93rem;margin-bottom:10px}
+.goal em{color:var(--amber2);font-style:normal}
+.brief{font-size:.87rem;color:var(--dim)}
+.sig{font-size:.82rem;color:var(--mute);margin:10px 0 2px}
+.sig b{color:var(--amber2)}
+
+/* ---------- attendu contre obtenu ---------- */
+.diff{margin:12px 0 4px;border:1px solid var(--line2);border-radius:var(--r);overflow:hidden}
+.diff .dh{background:var(--panel2);padding:6px 11px;font-size:.71rem;letter-spacing:1px;color:var(--mute);
+  display:flex;justify-content:space-between;align-items:center;gap:8px}
+.diff .db{padding:11px}
+/* Largeurs calées sur 375 px : neuf cellules, les étiquettes et l'octal
+   doivent tenir dans les 295 px réellement disponibles dans le panneau. */
+.mgrid{display:grid;grid-template-columns:auto repeat(3,1fr) auto;gap:5px 6px;align-items:center;font-size:.85rem;min-width:0}
+.mgrid .rl{color:var(--mute);font-size:.72rem;letter-spacing:.5px;white-space:nowrap}
+.mgrid .oct{font-weight:700;font-size:1rem;text-align:right;white-space:nowrap;padding-left:2px}
+.mgrid .oct.want{color:var(--dim)}
+.mgrid .oct.now{color:var(--ko)} .mgrid .oct.now.hit{color:var(--ok)}
+.grp{display:flex;gap:2px;justify-content:center}
+.cell{flex:1;max-width:30px;min-width:18px;height:30px;line-height:30px;text-align:center;
+  border-radius:3px;font-weight:700;border:1px solid transparent}
+.cell.want{background:var(--bg2);color:var(--dim);border-color:var(--line2)}
+/* Trait plein contre trait tireté : juste et faux se distinguent sans
+   dépendre de la couleur, indiscernable pour une partie des gens. */
+.cell.hit{background:rgba(61,220,132,.14);color:var(--ok);border-color:rgba(61,220,132,.45);border-style:solid}
+.cell.miss{background:rgba(255,95,86,.14);color:var(--ko);border-color:rgba(255,95,86,.6);
+  border-style:dashed;text-decoration:underline;text-underline-offset:2px}
+.attente{margin-top:10px;font-size:.79rem;color:var(--mute);font-style:italic}
+
+/* comparaison de deux textes, pour un contenu de fichier ou une sortie */
+.txtcmp{display:grid;grid-template-columns:auto 1fr;gap:5px 10px;font-size:.82rem;align-items:start}
+.txtcmp .k{color:var(--mute);font-size:.71rem;letter-spacing:.5px;white-space:nowrap;padding-top:3px}
+.txtcmp pre{font-family:var(--mono);white-space:pre-wrap;word-break:break-word;
+  background:var(--bg2);border:1px solid var(--line2);border-radius:4px;padding:6px 8px;min-width:0}
+.txtcmp pre.want{color:var(--dim)}
+.txtcmp pre.hit{color:var(--ok);border-color:rgba(61,220,132,.45)}
+.txtcmp pre.miss{color:var(--ko);border-color:rgba(255,95,86,.6);border-style:dashed}
+.txtcmp .vide{color:var(--lock);font-style:italic}
+
+/* liste de critères */
+.crit{display:flex;flex-direction:column;gap:7px}
+.crit li{display:flex;gap:9px;align-items:flex-start;font-size:.86rem;list-style:none}
+.crit .m{flex:none;width:1.15em;font-weight:700}
+.crit .todo{color:var(--mute)} .crit .todo .m{color:var(--lock)}
+.crit .done{color:var(--ok)}
+.crit .rate{color:var(--ko)} .crit .rate .m{color:var(--ko)}
+
+/* cas de test des missions C : même apparence, comportement inchangé */
+.tcase{display:flex;flex-direction:column;gap:2px;padding:8px 10px;border-radius:4px;
+  border:1px solid var(--line2);margin-bottom:7px;font-size:.82rem}
+.tcase.ok{border-color:rgba(61,220,132,.45);background:rgba(61,220,132,.07)}
+.tcase.ko{border-color:rgba(255,95,86,.5);background:rgba(255,95,86,.07);border-style:dashed}
+.tcase .lbl{font-weight:700}
+.tcase.ok .lbl{color:var(--ok)} .tcase.ko .lbl{color:var(--ko)}
+.tcase .d{color:var(--dim);font-size:.78rem;word-break:break-word}
+
+/* ---------- terminal ---------- */
+.term{background:#0f141b;border:1px solid var(--line2);border-radius:var(--r);overflow:hidden;margin-top:12px}
+.termtitre{display:flex;justify-content:space-between;gap:10px;align-items:center;background:var(--panel2);
+  padding:7px 12px;font-size:.72rem;letter-spacing:.6px;color:var(--mute);border-bottom:1px solid var(--line)}
+.termtitre .pwd{color:var(--lock);white-space:nowrap}
+.termout{padding:11px 12px;font-size:.82rem;max-height:230px;overflow-y:auto;white-space:pre-wrap;
+  word-break:break-word;-webkit-overflow-scrolling:touch}
+.termout>div{margin-bottom:2px}
+.termout .cmd{color:var(--ink)} .termout .cmd .p{color:var(--amber2)}
+.termout .err{color:var(--ko)} .termout .sys{color:var(--mute)}
+.termline{display:flex;align-items:center;gap:8px;padding:0 12px;border-top:1px solid var(--line);min-height:var(--tap)}
+.termline .p{color:var(--amber2);font-size:.86rem;flex:none}
+.termline input{flex:1;min-width:0;background:none;border:none;color:var(--ink);font-family:var(--mono);
+  font-size:16px;   /* 16px empêche iOS de zoomer au focus */
+  padding:11px 0;outline:none;align-self:stretch;min-height:var(--tap)}
+.termbar{display:flex;gap:8px;padding:8px 12px;border-top:1px solid var(--line);flex-wrap:wrap;align-items:center}
+.chip{background:var(--bg2);border:1px solid var(--line2);color:var(--dim);border-radius:999px;
+  min-height:var(--tap);padding:0 15px;font-size:.79rem;cursor:pointer}
+.chip:hover:not(:disabled){border-color:var(--amber2);color:var(--amber2)}
+.chip:disabled{opacity:.45;cursor:not-allowed}
+
+/* ---------- éditeur de code C ---------- */
+textarea.code{width:100%;min-height:190px;background:#0f141b;border:1px solid var(--line2);
+  border-radius:var(--r);color:var(--ink);font-family:var(--mono);font-size:14px;padding:11px 12px;
+  resize:vertical;line-height:1.55;margin-top:10px;tab-size:4}
+textarea.code:focus{border-color:var(--amber2);outline:none}
+.runbar{display:flex;gap:8px;margin-top:9px;flex-wrap:wrap}
+
+.faute{background:#0f141b;border:1px solid var(--line2);border-left:3px solid var(--ko);
+  border-radius:var(--r);padding:11px 12px;margin-top:10px;font-family:var(--mono);
+  font-size:.83rem;white-space:pre-wrap;word-break:break-word;color:var(--ink);overflow-x:auto}
+
+/* ---------- questions ---------- */
+.q{font-size:.93rem;margin-bottom:12px}
+.opts{display:flex;flex-direction:column;gap:8px}
+.opt{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);padding:11px 13px;
+  cursor:pointer;text-align:left;color:var(--ink);font-size:.88rem;min-height:var(--tap);
+  display:flex;align-items:center;gap:10px;width:100%}
+.opt:hover:not(:disabled){border-color:var(--line2);background:var(--panel2)}
+.opt:disabled{cursor:default}
+.opt .k{flex:none;width:1.5em;height:1.5em;line-height:1.5em;text-align:center;border-radius:3px;
+  background:var(--panel2);color:var(--mute);font-size:.74rem}
+.opt.right{border-color:var(--ok);background:rgba(61,220,132,.09)}
+.opt.right .k{background:var(--ok);color:#0f141b}
+.opt.wrong{border-color:var(--ko);background:rgba(255,95,86,.09);border-style:dashed}
+.opt.wrong .k{background:var(--ko);color:#0f141b}
+.answer{display:flex;gap:8px;align-items:stretch;flex-wrap:wrap}
+.answer input{flex:1;min-width:150px;background:var(--bg2);border:1px solid var(--line2);
+  border-radius:var(--r);color:var(--ink);font-family:var(--mono);font-size:16px;padding:0 12px;min-height:var(--tap)}
+.answer input:focus{border-color:var(--amber2);outline:none}
+.btn{background:var(--amber);color:#fff;border:none;border-radius:var(--r);min-height:var(--tap);
+  padding:0 17px;font-weight:700;cursor:pointer;font-size:.85rem}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.ghost{background:none;border:1px solid var(--line2);color:var(--dim);font-weight:400}
+.btn.ghost:hover:not(:disabled){border-color:var(--amber2);color:var(--amber2)}
+
+/* verdict : jamais la couleur seule, toujours un mot et un symbole */
+.verdict{margin-top:11px;font-size:.86rem;display:none}
+.verdict.show{display:block}
+.vline{display:flex;gap:8px;align-items:baseline;font-weight:700}
+.vline.good{color:var(--ok)} .vline.bad{color:var(--ko)}
+.vs{margin-top:9px;display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:.83rem}
+.vs .k{color:var(--mute);font-size:.72rem;letter-spacing:.5px;white-space:nowrap}
+.vs .v{word-break:break-word}
+.vs .v.bad{color:var(--ko)} .vs .v.good{color:var(--ok)}
+.why{margin-top:10px;color:var(--dim);font-size:.84rem;border-left:2px solid var(--line2);padding-left:11px}
+.hint{margin-top:9px;font-size:.83rem;color:var(--dim);border-left:2px solid var(--amber);padding:2px 0 2px 11px}
+.hint .n{color:var(--amber2);font-size:.72rem;letter-spacing:1px;display:block}
+.answerbox{background:var(--panel2);border:1px dashed var(--line2);border-radius:5px;padding:12px 13px;
+  margin-top:11px;font-size:.86rem}
+.answerbox .lab2{font-size:.71rem;color:var(--mute);letter-spacing:1px;margin-bottom:6px}
+
+/* ---------- widgets ---------- */
+.bwrow{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.bwg{text-align:center}
+.bwg .t{font-size:.7rem;color:var(--mute);margin-bottom:6px;letter-spacing:.5px}
+.bwb{display:flex;gap:4px;justify-content:center}
+.bit{flex:1;max-width:52px;min-width:0;height:var(--tap);border:1px solid var(--line2);border-radius:5px;
+  background:var(--bg2);color:var(--mute);font-size:1rem;font-weight:700;cursor:pointer}
+.bit[aria-pressed=true]{background:rgba(229,83,61,.18);border-color:var(--amber);color:var(--amber2)}
+.bwg .v{margin-top:7px;font-size:1.3rem;font-weight:700;color:var(--amber2)}
+.bwout{text-align:center;margin-top:12px;font-size:1rem;letter-spacing:1px;color:var(--dim)}
+.bwout b{color:var(--amber2);font-size:1.15rem}
+.schema svg{width:100%;height:auto;display:block}
+.schemactl{display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap}
+.schemamsg{text-align:center;font-size:.83rem;color:var(--dim);margin-top:9px;min-height:1.5em}
+.asciibox{text-align:center;padding:6px 0 2px}
+.asciibox .big{font-size:1.55rem;color:var(--amber2);font-weight:700}
+.asciibox .sub{font-size:.84rem;color:var(--dim);margin:8px 0 12px}
+.asciibox input[type=range]{width:100%;height:var(--tap);accent-color:var(--amber)}
+.asciirow{display:flex;gap:7px;justify-content:center;flex-wrap:wrap;margin-top:4px}
+.asciirow button{background:var(--bg2);border:1px solid var(--line2);color:var(--dim);border-radius:999px;
+  min-height:38px;padding:0 13px;font-size:.79rem;cursor:pointer}
+.asciirow button:hover{border-color:var(--amber2);color:var(--amber2)}
+
+/* ---------- fin de salle ---------- */
+.end{border:1px solid var(--amber);border-radius:var(--r);padding:18px 16px;text-align:center;margin-top:18px;
+  background:linear-gradient(180deg,rgba(229,83,61,.08),transparent)}
+.end .t{font-size:1rem;color:var(--amber2);font-weight:700}
+.end .s{font-size:.85rem;color:var(--dim);margin-top:6px}
+.end .row{display:flex;gap:9px;justify-content:center;margin-top:14px;flex-wrap:wrap}
+footer{margin-top:34px;font-size:.75rem;color:var(--mute);text-align:center;line-height:1.7}
+textarea.io{width:100%;min-height:80px;background:var(--bg2);border:1px solid var(--line2);
+  border-radius:5px;color:var(--ink);font-family:var(--mono);font-size:.76rem;padding:10px;resize:vertical}
+
+@media (min-width:620px){
+  .wrap{padding:0 20px 96px}
+  .rhead{margin:0 -20px;padding:12px 20px 10px}
+  .cell{max-width:34px;height:32px;line-height:32px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<main id="accueil">
+  <div class="brand">
+    <span class="u">student@campus</span>:~/shell00.lab %
+    <h1>SHELL 00</h1>
+  </div>
+
+  <div class="lsbox">
+    <div class="lshead">ls -l ~/shell00.lab &nbsp;—&nbsp; chaque salle validée allume ses bits</div>
+    <div class="lsbody" id="lsbody"></div>
+    <div class="total" id="totalLigne"></div>
+  </div>
+
+  <div class="panneau" aria-live="polite">
+    <div class="bits" id="bitsModule" role="img"></div>
+    <span class="count" id="compteSalles"></span>
+  </div>
+
+  <div class="panneau accent">
+    <div>
+      <div class="t" id="srsT">Révision espacée</div>
+      <div class="s" id="srsS"></div>
+    </div>
+    <div class="actions"><button class="btn" id="srsBtn" type="button">réviser</button></div>
+  </div>
+
+  <div class="panneau">
+    <div>
+      <div class="t">Sauvegarde manuelle</div>
+      <div class="s">La progression vit dans ce navigateur. Pour la transporter, copie ce code et recolle-le ailleurs : il contient les salles, la file de révision et ce qui a été résolu avec aide.</div>
+    </div>
+    <div class="actions">
+      <button class="btn ghost" id="expBtn" type="button">copier mon code</button>
+      <button class="btn ghost" id="impBtn" type="button">restaurer</button>
+    </div>
+  </div>
+  <div id="ioZone" class="hidden" style="margin-top:10px">
+    <textarea id="ioTexte" class="io" spellcheck="false" aria-label="code de sauvegarde"></textarea>
+    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center">
+      <button class="btn" id="ioGo" type="button">appliquer</button>
+      <button class="btn ghost" id="ioFermer" type="button">fermer</button>
+      <span id="ioMsg" style="font-size:.79rem;color:var(--dim)"></span>
+    </div>
+  </div>
+</main>
+
+<section id="salle" class="hidden">
+  <header class="rhead" id="teteSalle"></header>
+  <div id="corpsSalle"></div>
+</section>
+
+<footer>
+  <a href="index.html">&larr; tous les modules</a><br><br>
+  Le simulateur exécute réellement tes commandes sur un système de fichiers en mémoire.
+</footer>
+</div>
+
+<script>
+/* ==========================================================================
+   Page générée par src/build.mjs. Ne pas éditer ici : les modifications
+   seraient écrasées à la construction suivante, et tests/test_sources.js
+   échouerait en constatant l'écart. Les sources sont dans src/.
+   ========================================================================== */
+
+/* --- 1. moteur --- */
+/* Simulateur shell : système de fichiers en mémoire avec de vrais inodes.
+   Extrait de shell00.html lors de la bascule vers les sources ; à partir
+   d'ici c'est ce fichier qui fait foi, et les pages sont générées. */
+
+let INODE = 1000;
+const T0 = Date.UTC(2026,7,10,9,0,0);   // horloge virtuelle
+
+function fDir(mode){ return {type:'dir', mode:mode??0o755, mtime:T0, ino:++INODE, children:{}}; }
+function fFile(content,mode){ return {type:'file', mode:mode??0o644, mtime:T0, ino:++INODE, content:content??''}; }
+function fLink(target){ return {type:'link', mode:0o777, mtime:T0, ino:++INODE, target}; }
+
+function modeStr(n){
+  const t = n.type==='dir'?'d':n.type==='link'?'l':'-';
+  const m = n.type==='link'?0o777:n.mode;
+  let s='';
+  for(let i=2;i>=0;i--){ const v=(m>>(i*3))&7;
+    s+=(v&4?'r':'-')+(v&2?'w':'-')+(v&1?'x':'-'); }
+  return t+s;
+}
+function sizeOf(n){
+  if(n.type==='link') return n.target.length;
+  if(n.type==='dir')  return Object.keys(n.children).length?4096:6;
+  return n.content.length;
+}
+function countRefs(root,obj){
+  let c=0;
+  (function walk(d){ for(const k in d.children){ const ch=d.children[k];
+    if(ch===obj) c++; if(ch.type==='dir') walk(ch); } })(root);
+  return c;
+}
+function nlink(root,n){
+  if(n.type==='dir'){ let s=2; for(const k in n.children) if(n.children[k].type==='dir') s++; return s; }
+  if(n.type==='link') return 1;
+  return Math.max(1,countRefs(root,n));
+}
+const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function fmtTime(ms){
+  const d=new Date(ms);
+  const p=x=>String(x).padStart(2,'0');
+  return MONTHS[d.getUTCMonth()]+' '+String(d.getUTCDate()).padStart(2,' ')+' '+p(d.getUTCHours())+':'+p(d.getUTCMinutes());
+}
+function globRe(p){
+  return new RegExp('^'+p.replace(/[.+^${}()|[\]\\]/g,'\\$&').replace(/\*/g,'.*').replace(/\?/g,'.')+'$');
+}
+
+/* --------- tokenizer : quotes, \( \), | et $VAR --------- */
+function readVar(line,i,env){
+  const m=/^\$([A-Za-z_][A-Za-z0-9_]*)/.exec(line.slice(i));
+  if(!m) return null;
+  return {v:(env&&env[m[1]]!==undefined)?env[m[1]]:'', i:i+m[0].length-1};
+}
+function tokenize(line,env){
+  const out=[]; let cur=''; let q=null; let has=false;
+  for(let i=0;i<line.length;i++){
+    const c=line[i];
+    if(q==="'"){ if(c==="'"){q=null;} else cur+=c; continue; }
+    if(q==='"'){
+      if(c==='"'){q=null;}
+      else if(c==='$'){ const r=readVar(line,i,env); if(r){cur+=r.v;i=r.i;} else cur+=c; }
+      else cur+=c;
+      continue; }
+    if(c==='"'||c==="'"){ q=c; has=true; continue; }
+    if(c==='\\'){ if(i+1<line.length){ cur+='\\'+line[++i]; has=true; } continue; }
+    if(c==='$'){ const r=readVar(line,i,env); if(r){ cur+=r.v; i=r.i; has=true; continue; } }
+    if(/\s/.test(c)){ if(cur||has){out.push(cur);cur='';has=false;} continue; }
+    if(c==='>'){ if(cur||has){out.push(cur);cur='';has=false;}
+      if(line[i+1]==='>'){out.push('>>');i++;} else out.push('>'); continue; }
+    if(c==='|'){ if(cur||has){out.push(cur);cur='';has=false;} out.push('|'); continue; }
+    cur+=c;
+  }
+  if(cur||has) out.push(cur);
+  return out;
+}
+function expandSet(str){
+  const esc={n:'\n', t:'\t', r:'\r', '\\':'\\'};
+  let src='';
+  for(let i=0;i<str.length;i++){
+    if(str[i]==='\\'&&str[i+1]!==undefined){ src+= esc[str[i+1]]!==undefined?esc[str[i+1]]:str[i+1]; i++; }
+    else src+=str[i];
+  }
+  str=src;
+  const out=[];
+  for(let i=0;i<str.length;i++){
+    if(str[i+1]==='-'&&str[i+2]!==undefined){
+      for(let c=str.charCodeAt(i);c<=str.charCodeAt(i+2);c++) out.push(String.fromCharCode(c));
+      i+=2;
+    } else out.push(str[i]);
+  }
+  return out;
+}
+
+/* --------- machine --------- */
+function newShell(setup){
+  const root=fDir();
+  const sh={root, cwd:[], clock:T0, out:[], env:{}};
+  sh.cwdNode=()=>{ let n=root; for(const p of sh.cwd) n=n.children[p]; return n; };
+  if(setup) setup(sh);
+  return sh;
+}
+function resolveDir(sh,parts){          // renvoie {dir,name} pour un chemin
+  let n=sh.cwdNode(); let stack=sh.cwd.slice();
+  if(parts[0]===''){ n=sh.root; stack=[]; parts=parts.slice(1); }
+  for(let i=0;i<parts.length-1;i++){
+    const p=parts[i];
+    if(p===''||p==='.') continue;
+    if(p==='..'){ stack.pop(); n=sh.root; for(const q of stack) n=n.children[q]; continue; }
+    if(!n.children[p]||n.children[p].type!=='dir') return null;
+    n=n.children[p]; stack.push(p);
+  }
+  return {dir:n, name:parts[parts.length-1], stack};
+}
+function lookup(sh,path){
+  const r=resolveDir(sh,path.split('/'));
+  if(!r) return null;
+  if(r.name===''||r.name==='.') return r.dir;
+  if(r.name==='..'){ const s=r.stack.slice(0,-1); let n=sh.root; for(const q of s) n=n.children[q]; return n; }
+  return r.dir.children[r.name]||null;
+}
+function readTarget(sh,path){           // suit un symlink (1 niveau)
+  let n=lookup(sh,path);
+  if(n&&n.type==='link'){ const b=path.split('/').slice(0,-1).concat(n.target).join('/'); n=lookup(sh,b); }
+  return n;
+}
+
+function run(sh,line){
+  sh.clock+=60000;
+  const raw=line.trim();
+  if(!raw) return '';
+  let toks=tokenize(raw,sh.env);
+  // redirection
+  let redir=null, rmode=null;
+  const gi=toks.findIndex(t=>t==='>'||t==='>>');
+  if(gi>=0){ rmode=toks[gi]; redir=toks[gi+1]; toks=toks.slice(0,gi); }
+  // pipeline
+  const segs=[[]];
+  for(const t of toks){ if(t==='|') segs.push([]); else segs[segs.length-1].push(t); }
+  let input=null, res={out:''};
+  for(const seg of segs){
+    if(!seg.length) return {err:"zsh: parse error near `|'"};
+    try{ res=exec(sh,seg[0],seg.slice(1),input); }
+    catch(e){ res={err:String(e.message||e)}; }
+    if(res.err) return {err:res.err};
+    input=res.out??'';
+  }
+  const text=res.out??'';
+  if(redir){
+    const r=resolveDir(sh,redir.split('/'));
+    if(!r) return {err:redir+': No such file or directory'};
+    const ex=r.dir.children[r.name];
+    if(ex&&ex.type==='dir') return {err:'zsh: is a directory: '+redir};
+    if(ex&&rmode==='>>') ex.content+=text;
+    else if(ex){ ex.content=text; ex.mtime=sh.clock; }
+    else r.dir.children[r.name]=Object.assign(fFile(text),{mtime:sh.clock});
+    return {out:''};
+  }
+  return res;
+}
+
+function exec(sh,cmd,a,stdin){
+  const cwd=sh.cwdNode();
+  const O=t=>({out:t});
+  const inText=(files)=>{
+    if(files&&files.length){
+      let t='';
+      for(const p of files){
+        const nd=readTarget(sh,p);
+        if(!nd) return {err:cmd+': '+p+': No such file or directory'};
+        if(nd.type==='dir') return {err:cmd+': '+p+': Is a directory'};
+        t+=nd.content;
+      }
+      return {text:t};
+    }
+    return {text: stdin==null?'':stdin};
+  };
+  const splitLines=t=>{ const L=t.split('\n'); if(L[L.length-1]==='') L.pop(); return L; };
+  const joinLines=L=>L.length?L.join('\n')+'\n':'';
+  switch(cmd){
+
+  case 'pwd': return O('/home/student'+(sh.cwd.length?'/'+sh.cwd.join('/'):'')+'\n');
+
+  case 'clear': sh.out.length=0; return O('');
+
+  case 'help': return O(
+    'commandes simulées : ls, cd, pwd, cat, echo, touch, mkdir, rm, rmdir,\n'+
+    'chmod, ln, wc, find, man, clear, export, env,\n'+
+    'tr, cut, grep, head, tail, sort, uniq, rev, id.\n'+
+    'redirections > et >> supportées. Tape la commande de la mission.\n');
+
+  case 'man':{
+    const p=a[0];
+    const M={
+      ls:'LS(1)\n  -a  n\'ignore pas les entrées commençant par un point\n  -l  format long\n  -t  trie par date de modification, plus récent d\'abord\n  -m  liste séparée par des virgules\n  -p  ajoute / aux répertoires\n  -F  ajoute un indicateur (*/=>@|) aux entrées\n  -i  affiche le numéro d\'inode\n',
+      chmod:'CHMOD(1)\n  chmod MODE FICHIER...\n  MODE octal : chiffre par groupe (propriétaire, groupe, autres)\n  r=4  w=2  x=1, on additionne.\n',
+      ln:'LN(1)\n  ln CIBLE NOM        crée un lien dur\n  ln -s CIBLE NOM     crée un lien symbolique\n',
+      find:'FIND(1)\n  find CHEMIN EXPRESSION\n  -type f|d     restreint au type\n  -name MOTIF   filtre sur le nom\n  -o            OU logique\n  \\( \\)          groupe une expression\n  -print        affiche le chemin\n  -delete       supprime le fichier trouvé\n',
+      cat:'CAT(1)\n  -e  affiche $ en fin de ligne (implique -v)\n  sans fichier, cat lit l\'entrée standard\n',
+      tr:'TR(1)\n  tr SET1 SET2   remplace chaque caractère de SET1 par celui de SET2\n  tr -d SET      supprime les caractères de SET\n  tr lit toujours l\'entrée standard : branche-le avec un pipe.\n',
+      cut:'CUT(1)\n  -d DELIM   caractère séparateur de champs\n  -f LISTE   champs à garder (1, ou 1,3)\n',
+      grep:'GREP(1)\n  grep MOTIF [FICHIER]\n  -v  garde les lignes qui NE correspondent PAS\n  -i  ignore la casse\n  -c  affiche seulement le nombre de lignes\n',
+      wc:'WC(1)\n  -l  compte les lignes\n  -w  compte les mots\n  -c  compte les octets\n',
+      sort:'SORT(1)\n  sort [FICHIER]   trie les lignes par ordre alphabétique\n  -r  ordre inverse\n',
+      head:'HEAD(1)\n  -n N   affiche les N premières lignes (10 par défaut)\n',
+      tail:'TAIL(1)\n  -n N   affiche les N dernières lignes (10 par défaut)\n',
+      rev:'REV(1)\n  rev   inverse l\'ordre des caractères de chaque ligne.\n  Attention : il n\'inverse pas l\'ordre des lignes.\n',
+      id:'ID(1)\n  id [UTILISATEUR]\n  -G  affiche uniquement les identifiants de groupe\n  -n  affiche des noms au lieu de nombres\n  Les options se combinent.\n'
+    };
+    if(!p) return {err:'Quelle page de manuel voulez-vous ?'};
+    return M[p]?O(M[p]):{err:'Aucune entrée de manuel pour '+p};
+  }
+
+  case 'cd':{
+    const t=a[0]||'~';
+    if(t==='~'||t==='/'){ sh.cwd=[]; return O(''); }
+    const parts=t.split('/');
+    let stack=sh.cwd.slice();
+    for(const p of parts){
+      if(p===''||p==='.') continue;
+      if(p==='..'){ stack.pop(); continue; }
+      let n=sh.root; for(const q of stack) n=n.children[q];
+      const nx=n.children[p];
+      if(!nx) return {err:'cd: no such file or directory: '+t};
+      if(nx.type!=='dir') return {err:'cd: not a directory: '+t};
+      if(!((nx.mode>>6)&1)) return {err:'cd: permission denied: '+t};
+      stack.push(p);
+    }
+    sh.cwd=stack; return O('');
+  }
+
+  case 'ls':{
+    const fl=new Set(); const paths=[];
+    a.forEach(x=>{ if(x.startsWith('-')&&x.length>1) x.slice(1).split('').forEach(c=>fl.add(c)); else paths.push(x); });
+    let dir=cwd, prefix='';
+    if(paths.length){
+      const n=lookup(sh,paths[0]);
+      if(!n) return {err:'ls: cannot access \''+paths[0]+'\': No such file or directory'};
+      if(n.type==='dir'){ dir=n; prefix=paths[0]+':\n'; if(paths.length===1) prefix=''; }
+      else{ return O(fl.has('l')?longLine(sh,paths[0],n,fl)+'\n':paths[0]+'\n'); }
+    }
+    if(!((dir.mode>>6)&4)) return {err:'ls: Permission denied'};
+    let names=Object.keys(dir.children);
+    if(!fl.has('a')) names=names.filter(n=>!n.startsWith('.'));
+    names.sort();
+    if(fl.has('t')) names.sort((x,y)=>dir.children[y].mtime-dir.children[x].mtime);
+    if(fl.has('a')) names=['.','..'].concat(names);
+    const deco=n=>{
+      const nd=n==='.'?dir:n==='..'?dir:dir.children[n];
+      let s=n;
+      if(fl.has('p')&&nd.type==='dir') s+='/';
+      else if(fl.has('F')){
+        if(nd.type==='dir') s+='/';
+        else if(nd.type==='link') s+='@';
+        else if(nd.mode&0o111) s+='*';
+      }
+      return s;
+    };
+    if(fl.has('l')){
+      let t='total '+names.length*4+'\n';
+      for(const n of names){
+        if(n==='.'||n==='..'){ t+=longLine(sh,n,dir,fl)+'\n'; continue; }
+        t+=longLine(sh,deco(n),dir.children[n],fl)+'\n';
+      }
+      return O(t);
+    }
+    if(fl.has('m')) return O(names.map(deco).join(', ')+'\n');
+    if(fl.has('i')) return O(names.map(n=>(n==='.'||n==='..'?dir.ino:dir.children[n].ino)+' '+deco(n)).join('  ')+'\n');
+    return O(names.map(deco).join('  ')+(names.length?'\n':''));
+  }
+
+  case 'cat':{
+    const e=a.includes('-e'); const f=a.filter(x=>!x.startsWith('-'));
+    if(!f.length){
+      if(stdin==null) return {err:'cat: usage: cat [-e] fichier'};
+      return O(e ? stdin.replace(/\n/g,'$\n') : stdin);
+    }
+    let t='';
+    for(const p of f){
+      const n=readTarget(sh,p);
+      if(!n) return {err:'cat: '+p+': No such file or directory'};
+      if(n.type==='dir') return {err:'cat: '+p+': Is a directory'};
+      if(!((n.mode>>6)&4)) return {err:'cat: '+p+': Permission denied'};
+      t+= e ? n.content.replace(/\n/g,'$\n') : n.content;
+    }
+    return O(t);
+  }
+
+  case 'echo':{
+    const s=a.join(' ');
+    return O(s+'\n');
+  }
+
+  case 'wc':{
+    const f=a.filter(x=>!x.startsWith('-'));
+    const mode = a.includes('-c')?'c' : a.includes('-w')?'w' : a.includes('-l')?'l' : null;
+    const count=t=> mode==='c'? t.length
+                  : mode==='w'? (t.trim()===''?0:t.trim().split(/\s+/).length)
+                  : splitLines(t).length;
+    if(!f.length){
+      const r=inText([]); if(r.err) return {err:r.err};
+      if(!mode) return O('      '+splitLines(r.text).length+'       '+
+        (r.text.trim()===''?0:r.text.trim().split(/\s+/).length)+'      '+r.text.length+'\n');
+      return O(count(r.text)+'\n');
+    }
+    let t='';
+    for(const p of f){
+      const n=readTarget(sh,p);
+      if(!n) return {err:'wc: '+p+': No such file or directory'};
+      t+=(mode?count(n.content):splitLines(n.content).length)+' '+p+'\n';
+    }
+    return O(t);
+  }
+
+  case 'touch':{
+    let time=null; const f=[];
+    for(let i=0;i<a.length;i++){
+      if(a[i]==='-t'){ const v=a[++i];
+        const m=/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})$/.exec(v||'');
+        if(!m) return {err:"touch: invalid date format '"+v+"'"};
+        time=Date.UTC(+m[1],+m[2]-1,+m[3],+m[4],+m[5]); continue; }
+      if(a[i]==='-h') continue;
+      if(a[i].startsWith('-')) continue;
+      f.push(a[i]);
+    }
+    if(!f.length) return {err:'touch: missing file operand'};
+    for(const p of f){
+      const r=resolveDir(sh,p.split('/'));
+      if(!r) return {err:'touch: cannot touch \''+p+'\': No such file or directory'};
+      const ex=r.dir.children[r.name];
+      if(ex) ex.mtime=time??sh.clock;
+      else r.dir.children[r.name]=Object.assign(fFile(''),{mtime:time??sh.clock});
+    }
+    return O('');
+  }
+
+  case 'mkdir':{
+    const f=a.filter(x=>!x.startsWith('-'));
+    const p_=a.includes('-p');
+    if(!f.length) return {err:'mkdir: missing operand'};
+    for(const p of f){
+      const parts=p.split('/');
+      let n=cwd;
+      for(let i=0;i<parts.length;i++){
+        const seg=parts[i];
+        if(!seg||seg==='.') continue;
+        if(!n.children[seg]){
+          if(i<parts.length-1&&!p_) return {err:'mkdir: cannot create directory \''+p+'\': No such file or directory'};
+          n.children[seg]=Object.assign(fDir(),{mtime:sh.clock});
+        } else if(i===parts.length-1&&!p_) return {err:'mkdir: cannot create directory \''+p+'\': File exists'};
+        n=n.children[seg];
+      }
+    }
+    return O('');
+  }
+
+  case 'rmdir':{
+    for(const p of a){
+      const r=resolveDir(sh,p.split('/'));
+      const n=r&&r.dir.children[r.name];
+      if(!n) return {err:'rmdir: failed to remove \''+p+'\': No such file or directory'};
+      if(n.type!=='dir') return {err:'rmdir: failed to remove \''+p+'\': Not a directory'};
+      if(Object.keys(n.children).length) return {err:'rmdir: failed to remove \''+p+'\': Directory not empty'};
+      delete r.dir.children[r.name];
+    }
+    return O('');
+  }
+
+  case 'rm':{
+    const rf=a.some(x=>/^-[rf]+$/.test(x));
+    const f=a.filter(x=>!x.startsWith('-'));
+    if(!f.length) return {err:'rm: missing operand'};
+    for(const p of f){
+      const r=resolveDir(sh,p.split('/'));
+      const n=r&&r.dir.children[r.name];
+      if(!n) return {err:'rm: cannot remove \''+p+'\': No such file or directory'};
+      if(n.type==='dir'&&!rf) return {err:'rm: cannot remove \''+p+'\': Is a directory'};
+      delete r.dir.children[r.name];
+    }
+    return O('');
+  }
+
+  case 'chmod':{
+    const f=a.filter(x=>!x.startsWith('-'));
+    if(f.length<2) return {err:'chmod: missing operand'};
+    const m=f[0];
+    if(!/^[0-7]{3,4}$/.test(m)) return {err:'chmod: invalid mode: \''+m+'\' (utilise 3 chiffres octaux)'};
+    for(const p of f.slice(1)){
+      const n=lookup(sh,p);
+      if(!n) return {err:'chmod: cannot access \''+p+'\': No such file or directory'};
+      if(n.type==='link') continue;
+      n.mode=parseInt(m.slice(-3),8);
+    }
+    return O('');
+  }
+
+  case 'ln':{
+    const s=a.includes('-s');
+    const f=a.filter(x=>!x.startsWith('-'));
+    if(f.length<2) return {err:'ln: missing file operand'};
+    const [target,name]=f;
+    const r=resolveDir(sh,name.split('/'));
+    if(!r) return {err:'ln: failed to create link \''+name+'\''};
+    if(r.dir.children[r.name]) return {err:'ln: failed to create link \''+name+'\': File exists'};
+    if(s){ r.dir.children[r.name]=Object.assign(fLink(target),{mtime:sh.clock}); return O(''); }
+    const t=lookup(sh,target);
+    if(!t) return {err:'ln: failed to access \''+target+'\': No such file or directory'};
+    if(t.type==='dir') return {err:'ln: '+target+': hard link not allowed for directory'};
+    r.dir.children[r.name]=t;                 // même objet => même inode
+    return O('');
+  }
+
+  case 'find': return doFind(sh,a);
+
+
+  case 'export':{
+    for(const x of a){ const i=x.indexOf('='); if(i>0) sh.env[x.slice(0,i)]=x.slice(i+1); }
+    return O('');
+  }
+  case 'unset': for(const x of a) delete sh.env[x]; return O('');
+  case 'env': {
+    const k=Object.keys(sh.env);
+    return O(k.length? k.map(x=>x+'='+sh.env[x]).join('\n')+'\n' : '');
+  }
+
+  case 'tr':{
+    const del=a.includes('-d');
+    const f=a.filter(x=>!(x.length>1&&x.startsWith('-')));
+    const r=inText([]); if(r.err) return {err:r.err};
+    if(stdin==null) return {err:'tr: tr lit l\'entrée standard, branche-le avec un pipe'};
+    if(del){
+      const set=new Set(expandSet(f[0]||''));
+      return O([...r.text].filter(c=>!set.has(c)).join(''));
+    }
+    if(f.length<2) return {err:'tr: usage: tr SET1 SET2  (ou tr -d SET)'};
+    const s1=expandSet(f[0]), s2=expandSet(f[1]);
+    return O([...r.text].map(c=>{ const i=s1.indexOf(c);
+      return i<0?c:(s2[Math.min(i,s2.length-1)]||c); }).join(''));
+  }
+
+  case 'cut':{
+    let d='\t', fields=null; const files=[];
+    for(let i=0;i<a.length;i++){
+      const x=a[i];
+      if(x==='-d'){ d=a[++i]; continue; }
+      if(x.startsWith('-d')&&x.length>2){ d=x.slice(2); continue; }
+      if(x==='-f'){ fields=a[++i]; continue; }
+      if(x.startsWith('-f')&&x.length>2){ fields=x.slice(2); continue; }
+      if(x.startsWith('-')) continue;
+      files.push(x);
+    }
+    if(!fields) return {err:'cut: précise les champs avec -f'};
+    const r=inText(files); if(r.err) return {err:r.err};
+    const idx=fields.split(',').map(x=>parseInt(x,10));
+    return O(joinLines(splitLines(r.text).map(L=>{
+      const parts=L.split(d);
+      return idx.map(i=>parts[i-1]===undefined?'':parts[i-1]).join(d);
+    })));
+  }
+
+  case 'grep':{
+    let inv=false,ci=false,cnt=false; const rest=[];
+    a.forEach(x=>{ if(x.startsWith('-')&&x.length>1)
+        x.slice(1).split('').forEach(c=>{ if(c==='v')inv=true; if(c==='i')ci=true; if(c==='c')cnt=true; });
+      else rest.push(x); });
+    const pat=rest.shift();
+    if(pat===undefined) return {err:'grep: usage: grep MOTIF [fichier]'};
+    const r=inText(rest); if(r.err) return {err:r.err};
+    let re; try{ re=new RegExp(pat, ci?'i':''); }catch(e){ return {err:'grep: motif invalide'}; }
+    const keep=splitLines(r.text).filter(L=>re.test(L)!==inv);
+    return cnt? O(keep.length+'\n') : O(joinLines(keep));
+  }
+
+  case 'head': case 'tail':{
+    let n=10; const files=[];
+    for(let i=0;i<a.length;i++){ const x=a[i];
+      if(x==='-n'){ n=parseInt(a[++i],10); continue; }
+      if(/^-\d+$/.test(x)){ n=parseInt(x.slice(1),10); continue; }
+      if(x.startsWith('-')) continue;
+      files.push(x); }
+    const r=inText(files); if(r.err) return {err:r.err};
+    const L=splitLines(r.text);
+    return O(joinLines(cmd==='head'? L.slice(0,n) : L.slice(-n)));
+  }
+
+  case 'sort':{
+    const rv=a.includes('-r'); const files=a.filter(x=>!x.startsWith('-'));
+    const r=inText(files); if(r.err) return {err:r.err};
+    const L=splitLines(r.text).sort();
+    if(rv) L.reverse();
+    return O(joinLines(L));
+  }
+
+  case 'uniq':{
+    const files=a.filter(x=>!x.startsWith('-'));
+    const r=inText(files); if(r.err) return {err:r.err};
+    const out=[]; let prev=null;
+    for(const L of splitLines(r.text)){ if(L!==prev) out.push(L); prev=L; }
+    return O(joinLines(out));
+  }
+
+  case 'rev':{
+    const files=a.filter(x=>!x.startsWith('-'));
+    const r=inText(files); if(r.err) return {err:r.err};
+    return O(joinLines(splitLines(r.text).map(L=>[...L].reverse().join(''))));
+  }
+
+  case 'id':{
+    const DB={ student:['student','adm','sudo'], daemon:['daemon','bin'],
+               marvin:['marvin','users','games'], bocal:['bocal','adm','cdrom','sudo','dip'] };
+    let gOnly=false,names=false; const rest=[];
+    a.forEach(x=>{ if(x.startsWith('-')&&x.length>1)
+        x.slice(1).split('').forEach(c=>{ if(c==='G')gOnly=true; if(c==='n')names=true; });
+      else rest.push(x); });
+    const u=rest[0]||'student';
+    const g=DB[u];
+    if(!g) return {err:'id: \''+u+'\': no such user'};
+    if(gOnly&&names) return O(g.join(' ')+'\n');
+    if(gOnly) return O(g.map((_,i)=>1000+i).join(' ')+'\n');
+    if(names) return O(u+'\n');
+    return O('uid=1000('+u+') gid=1000('+g[0]+') groups='+
+             g.map((x,i)=>(1000+i)+'('+x+')').join(',')+'\n');
+  }
+
+  default: return {err:'zsh: command not found: '+cmd};
+  }
+}
+
+function longLine(sh,disp,n,fl){
+  const nm = n.type==='link' ? disp+' -> '+n.target : disp;
+  const ino = fl&&fl.has('i') ? n.ino+' ' : '';
+  return ino+modeStr(n)+' '+nlink(sh.root,n)+' student piscine '+
+         String(sizeOf(n)).padStart(4,' ')+' '+fmtTime(n.mtime)+' '+nm;
+}
+
+function doFind(sh,a){
+  let i=0; let start='.';
+  if(a[i]&&!a[i].startsWith('-')&&!/^\\?\($/.test(a[i])){ start=a[i]; i++; }
+  const toks=a.slice(i).map(t=>t.replace(/^\\/,''));
+  if(!toks.length) toks.push('-print');
+  let hasAction=toks.some(t=>t==='-print'||t==='-delete');
+  const startNode=lookup(sh,start);
+  if(!startNode) return {err:'find: \''+start+'\': No such file or directory'};
+
+  const out=[]; const dels=[];
+  let pos=0;
+  function parseOr(){ const l=[parseAnd()]; while(toks[pos]==='-o'){ pos++; l.push(parseAnd()); } 
+    return ctx=>l.some(f=>f(ctx)); }
+  function parseAnd(){ const l=[]; 
+    while(pos<toks.length&&toks[pos]!=='-o'&&toks[pos]!==')') l.push(parsePrim());
+    return ctx=>{ for(const f of l) if(!f(ctx)) return false; return true; }; }
+  function parsePrim(){
+    const t=toks[pos++];
+    if(t==='('){ const e=parseOr(); if(toks[pos]===')') pos++; return e; }
+    if(t==='-name'){ const re=globRe(toks[pos++]); return c=>re.test(c.name); }
+    if(t==='-type'){ const k=toks[pos++]; return c=>(k==='f'&&c.node.type==='file')||(k==='d'&&c.node.type==='dir')||(k==='l'&&c.node.type==='link'); }
+    if(t==='-print'){ return c=>{ out.push(c.path); return true; }; }
+    if(t==='-delete'){ return c=>{ dels.push(c); return true; }; }
+    if(t==='-maxdepth'){ pos++; return ()=>true; }
+    throw new Error('find: unknown predicate `'+t+"'");
+  }
+  let expr;
+  try{ expr=parseOr(); }catch(e){ return {err:String(e.message)}; }
+  if(!hasAction){ const inner=expr; expr=c=>{ if(inner(c)){ out.push(c.path); return true; } return false; }; }
+
+  (function walk(node,path,parent,name){
+    expr({node,path,name:name??'.',parent});
+    if(node.type==='dir') for(const k of Object.keys(node.children).sort())
+      walk(node.children[k], path+'/'+k, node, k);
+  })(startNode,start,null,start.split('/').pop());
+
+  for(const d of dels) if(d.parent) delete d.parent.children[d.name];
+  return {out: out.length? out.join('\n')+'\n' : ''};
+}
+
+function newShellFrom(sh){
+  const clone=JSON.parse(JSON.stringify({root:sh.root,cwd:sh.cwd,clock:sh.clock,env:sh.env||{}}));
+  const s={root:clone.root,cwd:clone.cwd,clock:clone.clock,out:[],env:clone.env};
+  s.cwdNode=()=>{ let n=s.root; for(const p of s.cwd) n=n.children[p]; return n; };
+  return s;
+}
+
+/* --- 2. widgets --- */
+/* Les objets manipulables. Chacun sert à faire sentir un mécanisme avant de
+   l'expliquer : on bouge quelque chose, on voit la conséquence.
+   Ils ne comptent pas comme tâches ; c'est la question de prédiction qui les
+   précède qui compte. */
+
+const SVGNS = 'http://www.w3.org/2000/svg';
+function svgEl(nom, attrs){
+  const e = document.createElementNS(SVGNS, nom);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  return e;
+}
+function svgTexte(x, y, txt, taille, couleur, ancre){
+  const t = svgEl('text', {x, y, 'text-anchor':ancre||'middle',
+    'font-family':'ui-monospace,monospace', 'font-size':taille||11, fill:couleur||'#8f9cad'});
+  t.textContent = txt;
+  return t;
+}
+function boutonSchema(zone, libelle, action, redessine){
+  const b=document.createElement('button'); b.className='btn ghost'; b.type='button'; b.textContent=libelle;
+  b.onclick=()=>{ action(); redessine(); };
+  zone.appendChild(b);
+  return b;
+}
+
+/* ---------- les bits de permission ---------- */
+function widgetBits(){
+  const w=document.createElement('div');
+  const etat=[[1,1,0],[1,0,0],[1,0,0]];
+  const noms=['propriétaire','groupe','autres'];
+  const rangee=document.createElement('div'); rangee.className='bwrow';
+  const sortie=document.createElement('div'); sortie.className='bwout';
+  const valeurs=[];
+  noms.forEach((nom,g)=>{
+    const col=document.createElement('div'); col.className='bwg';
+    col.innerHTML='<div class="t">'+nom+'</div>';
+    const trio=document.createElement('div'); trio.className='bwb';
+    ['r','w','x'].forEach((L,b)=>{
+      const btn=document.createElement('button'); btn.className='bit'; btn.type='button'; btn.textContent=L;
+      btn.setAttribute('aria-label',L+' pour '+nom);
+      btn.onclick=()=>{ etat[g][b]=etat[g][b]?0:1; maj(); };
+      trio.appendChild(btn);
+    });
+    const v=document.createElement('div'); v.className='v'; valeurs.push(v);
+    col.appendChild(trio); col.appendChild(v); rangee.appendChild(col);
+  });
+  function maj(){
+    let lettres='', oct='';
+    noms.forEach((_,g)=>{
+      const [r,wr,x]=etat[g];
+      const n=r*4+wr*2+x;
+      valeurs[g].textContent=n; oct+=n;
+      lettres+=(r?'r':'-')+(wr?'w':'-')+(x?'x':'-');
+      const trio=rangee.children[g].querySelector('.bwb');
+      [r,wr,x].forEach((on,b)=>trio.children[b].setAttribute('aria-pressed',on?'true':'false'));
+    });
+    sortie.innerHTML='-'+lettres+' &nbsp;=&nbsp; chmod <b>'+oct+'</b>';
+  }
+  w.appendChild(rangee); w.appendChild(sortie); maj();
+  return w;
+}
+
+/* ---------- lien dur contre lien symbolique ---------- */
+function widgetInode(){
+  const w=document.createElement('div'); w.className='schema';
+  const svg=svgEl('svg',{viewBox:'0 0 660 210'}); w.appendChild(svg);
+  const msg=document.createElement('div'); msg.className='schemamsg';
+  const ctl=document.createElement('div'); ctl.className='schemactl';
+  let vivant={durA:true, durB:true, cibleSym:true, sym:true};
+
+  function boite(x,y,l,h,titre,sous,actif,tirets){
+    const g=svgEl('g');
+    const r=svgEl('rect',{x,y,width:l,height:h,rx:5,
+      fill:actif?'#26303c':'#1a212a', stroke:actif?'#e5533d':'#2f3a47'});
+    if(tirets) r.setAttribute('stroke-dasharray','5 4');
+    g.appendChild(r);
+    g.appendChild(svgTexte(x+l/2, y+h/2+(sous?-4:5), titre, 13, actif?'#ff7d68':'#7a8697'));
+    if(sous) g.appendChild(svgTexte(x+l/2, y+h/2+14, sous, 10, actif?'#8f9cad':'#3e4b5a'));
+    svg.appendChild(g);
+  }
+  function fleche(x1,y1,x2,y2,actif,tirets){
+    const l=svgEl('line',{x1,y1,x2,y2, stroke:actif?'#e5533d':'#2f3a47','stroke-width':1.5});
+    if(tirets) l.setAttribute('stroke-dasharray','4 4');
+    svg.appendChild(l);
+    svg.appendChild(svgEl('circle',{cx:x2,cy:y2,r:3.5, fill:actif?'#e5533d':'#2f3a47'}));
+  }
+  function dessine(){
+    svg.innerHTML='';
+    svg.appendChild(svgTexte(165,16,'LIEN DUR   ln a b',11,'#8f9cad'));
+    svg.appendChild(svgTexte(495,16,'LIEN SYMBOLIQUE   ln -s a b',11,'#8f9cad'));
+    boite(20,38,110,38,'nom : a', vivant.durA?'':'supprimé', vivant.durA);
+    boite(20,103,110,38,'nom : b', vivant.durB?'':'supprimé', vivant.durB);
+    const inodeVivant = vivant.durA||vivant.durB;
+    boite(190,68,130,48,'inode #4211', inodeVivant?'contenu vivant':'contenu détruit', inodeVivant);
+    if(vivant.durA) fleche(130,57,190,84,true);
+    if(vivant.durB) fleche(130,122,190,100,true);
+    boite(350,38,110,38,'nom : a', vivant.cibleSym?'':'supprimé', vivant.cibleSym);
+    boite(350,103,130,38,'lien : b', vivant.sym?'contient « a »':'', vivant.sym);
+    boite(540,68,100,48,'inode #7702', vivant.cibleSym?'contenu':'détruit', vivant.cibleSym);
+    if(vivant.cibleSym) fleche(460,57,540,84,true);
+    if(vivant.sym) fleche(480,122,540,100,vivant.cibleSym,true);
+    if(vivant.sym && !vivant.cibleSym)
+      svg.appendChild(svgTexte(510,160,'lien mort',11,'#ff5f56'));
+    svg.setAttribute('aria-label','à gauche, deux noms vers un même inode'+
+      (vivant.durA?'':' dont un supprimé')+' ; à droite, un lien symbolique'+
+      (vivant.cibleSym?'':' devenu mort'));
+  }
+  svg.setAttribute('role','img');
+  boutonSchema(ctl,'rm a  (côté dur)',()=>{ vivant.durA=false;
+    msg.innerHTML = vivant.durB
+      ? 'Le nom <b>a</b> disparaît, mais <b>b</b> pointe toujours sur l\'inode : le contenu vit. Le compteur de liens passe de 2 à 1.'
+      : 'Plus aucun nom : le contenu est détruit.'; }, dessine);
+  boutonSchema(ctl,'rm a  (côté symbolique)',()=>{ vivant.cibleSym=false;
+    msg.innerHTML='Le lien <b>b</b> existe encore et pèse toujours autant, mais son texte « a » ne mène plus nulle part : <b>lien mort</b>.'; }, dessine);
+  boutonSchema(ctl,'remettre à zéro',()=>{ vivant={durA:true,durB:true,cibleSym:true,sym:true}; msg.textContent=''; }, dessine);
+  dessine();
+  w.appendChild(ctl); w.appendChild(msg);
+  return w;
+}
+
+/* ---------- un caractère est un nombre ---------- */
+function widgetAscii(){
+  const w=document.createElement('div');
+  const boite=document.createElement('div'); boite.className='asciibox';
+  const gros=document.createElement('div'); gros.className='big';
+  const sous=document.createElement('div'); sous.className='sub';
+  const curseur=document.createElement('input');
+  curseur.type='range'; curseur.min='32'; curseur.max='126'; curseur.value='97';
+  curseur.setAttribute('aria-label','code du caractère');
+  const rangee=document.createElement('div'); rangee.className='asciirow';
+  function maj(){
+    const n=+curseur.value, ch=String.fromCharCode(n);
+    gros.textContent="'"+ch+"'  =  "+n;
+    const ecart=n-97;
+    sous.innerHTML="en C, <code>'"+ch+"'</code> <b>est</b> le nombre "+n+
+      ". Donc <code>'a' "+(ecart<0?'- '+(-ecart):'+ '+ecart)+"</code> vaut "+n+
+      ", c'est-à-dire <code>'"+ch+"'</code>.";
+    curseur.setAttribute('aria-valuetext',ch+', code '+n);
+  }
+  [["'a'",97],["'z'",122],["'A'",65],["'0'",48],["'9'",57],['espace',32]].forEach(([lib,v])=>{
+    const b=document.createElement('button'); b.type='button'; b.textContent=lib;
+    b.onclick=()=>{ curseur.value=v; maj(); }; rangee.appendChild(b);
+  });
+  curseur.oninput=maj;
+  boite.appendChild(gros); boite.appendChild(sous); boite.appendChild(curseur);
+  w.appendChild(boite); w.appendChild(rangee); maj();
+  return w;
+}
+
+/* ---------- variable, pointeur, pointeur de pointeur ---------- */
+function widgetMemoire(){
+  const w=document.createElement('div'); w.className='schema';
+  const svg=svgEl('svg',{viewBox:'0 0 640 180', role:'img'}); w.appendChild(svg);
+  const msg=document.createElement('div'); msg.className='schemamsg';
+  const ctl=document.createElement('div'); ctl.className='schemactl';
+  let x=5;
+  function boite(bx,by,bl,bh,titre,valeur){
+    const g=svgEl('g');
+    g.appendChild(svgEl('rect',{x:bx,y:by,width:bl,height:bh,rx:5,fill:'#26303c',stroke:'#e5533d'}));
+    g.appendChild(svgTexte(bx+bl/2, by+19, titre, 11, '#8f9cad'));
+    g.appendChild(svgTexte(bx+bl/2, by+42, valeur, 15, '#ff7d68'));
+    svg.appendChild(g);
+  }
+  function fleche(x1,y1,x2,y2){
+    svg.appendChild(svgEl('line',{x1,y1,x2,y2,stroke:'#e5533d','stroke-width':1.5}));
+    svg.appendChild(svgEl('circle',{cx:x2,cy:y2,r:3.5,fill:'#e5533d'}));
+  }
+  function dessine(){
+    svg.innerHTML='';
+    svg.appendChild(svgTexte(320,16,'une seule case contient la valeur ; les autres contiennent une adresse',11));
+    boite(30,40,160,58,'int x   (adresse 1000)', String(x));
+    boite(240,40,150,58,'int *p', '1000');
+    boite(440,40,170,58,'int **q', 'adresse de p');
+    fleche(240,69,192,69);
+    fleche(440,69,392,69);
+    svg.appendChild(svgTexte(216,112,'*p',11,'#8f9cad'));
+    svg.appendChild(svgTexte(416,112,'*q',11,'#8f9cad'));
+    svg.appendChild(svgTexte(320,148,'*p vaut '+x+'   ·   **q vaut '+x, 12, '#8f9cad'));
+    svg.setAttribute('aria-label','x vaut '+x+' ; p contient l\'adresse de x ; q contient l\'adresse de p');
+  }
+  boutonSchema(ctl,'x = 9',()=>{ x=9;
+    msg.innerHTML='On écrit dans la variable directement. <b>*p</b> et <b>**q</b> changent aussi : ils désignent la même case.'; }, dessine);
+  boutonSchema(ctl,'*p = 42',()=>{ x=42;
+    msg.innerHTML='On écrit <b>à travers</b> le pointeur. Résultat identique : p contient l\'adresse de x, donc *p EST x.'; }, dessine);
+  boutonSchema(ctl,'**q = 7',()=>{ x=7;
+    msg.innerHTML='Deux sauts : q donne p, p donne x. Chaque étoile suit une flèche de plus.'; }, dessine);
+  boutonSchema(ctl,'remettre à zéro',()=>{ x=5; msg.textContent=''; }, dessine);
+  dessine();
+  w.appendChild(ctl); w.appendChild(msg);
+  return w;
+}
+
+/* --- 3. contenu du module --- */
+/* Contenu pédagogique du module shell00.
+   Les salles et les questions d'auto-évaluation, rien d'autre : ni moteur,
+   ni rendu, ni style. */
+
+const MODULE={cle:'shell00lab_v1', titre:"shell00.lab — salles d'entraînement", invite:"~/shell00.lab"};
+
+const ROOMS=[
+{
+id:'r1', file:'redirection', tag:'ex00', title:'Écrire dans un fichier',
+sub:"cat n'exécute pas, echo ajoute un saut de ligne, > écrase.",
+steps:[
+ {k:'lesson',h:'Ce que fait vraiment cat',b:`
+  <p><code>cat truc</code> <b>affiche</b> le contenu de truc. Il ne l'exécute pas, il ne l'interprète pas. Pour que <code>cat</code> affiche quelque chose, il faut que le fichier contienne littéralement ce quelque chose.</p>
+  <p><code>echo</code> écrit du texte sur la sortie, plus un saut de ligne invisible. <code>&gt;</code> détourne cette sortie vers un fichier au lieu de l'écran.</p>
+  <p>Et pour voir l'invisible : <code>cat -e</code> affiche un <code>$</code> à chaque fin de ligne.</p>`},
+ {k:'term',h:'Mission : fabrique la sortie voulue',
+  goal:'cat marque doit afficher OK',
+  brief:"Le dossier est vide. Crée un fichier <code>marque</code> tel que <code>cat marque</code> affiche <code>OK</code>. Vérifie ensuite ce que tu as vraiment écrit.",
+  setup:sh=>{},
+  terminal:'MISSION · FABRIQUER UN CONTENU', dossier:'bac', raccourcis:['ls -l','cat -e marque'],
+  verif:{type:'contenu', fichier:'marque', attendu:'OK\n'},
+  check:sh=>{ const n=lookup(sh,'marque'); return !!n&&n.type==='file'&&n.content==='OK\n'; },
+  hints:["La commande qui écrit du texte s'appelle echo. Le caractère qui détourne vers un fichier est >.",
+         "Forme générale : echo TEXTE > NOMDUFICHIER. Puis contrôle avec cat -e.",
+         "echo OK > marque — et cat -e marque doit répondre OK$"]},
+ {k:'mcq',h:'',q:"Ton <code>cat -e marque</code> affiche <code>OK$</code>. Combien pèse le fichier ?",
+  opts:['2 octets','3 octets','4 octets','1 octet'],a:1,
+  why:"O et K font 2, le saut de ligne matérialisé par le $ en fait 1 de plus. echo ajoute toujours ce saut, et il compte dans la taille."},
+ {k:'term',h:'Mission : quand la redirection refuse',
+  goal:'écrire debut dans journal',
+  brief:"Écris <code>debut</code> dans <code>journal</code>. Si le shell te repousse, ne t'acharne pas : liste d'abord en format long et regarde le tout premier caractère de la ligne.",
+  setup:sh=>{ sh.root.children['journal']=fDir(); },
+  terminal:'MISSION · LA REDIRECTION REFUSÉE', dossier:'bac', raccourcis:['ls -l'],
+  verif:{type:'contenu', fichier:'journal', attendu:'debut\n'},
+  check:sh=>{ const n=lookup(sh,'journal'); return !!n&&n.type==='file'&&n.content==='debut\n'; },
+  hints:["Lance ls -l. Le premier caractère annonce le type de l'entrée, avant même les permissions.",
+         "Un d en première position signifie directory. On n'écrit pas de texte dans un dossier.",
+         "Supprime le dossier vide avec rmdir, puis refais ta redirection."]},
+ {k:'mcq',h:'',q:"Un fichier contient déjà trois lignes. Que fait <code>echo fin &gt; f</code> ?",
+  opts:['Ajoute fin à la suite','Remplace tout le contenu par fin','Refuse car le fichier existe','Crée un fichier f2'],a:1,
+  why:"Une seule chevron écrase. Pour ajouter à la fin sans rien perdre, il en faut deux."}
+]},
+
+{
+id:'r2', file:'lslong', tag:'ex01', title:'Lire une ligne de ls -l',
+sub:'Type, permissions, nombre de liens, taille : décoder les colonnes.',
+steps:[
+ {k:'lesson',h:'Anatomie de la ligne',b:`
+  <p>Une ligne de <code>ls -l</code> se lit de gauche à droite :</p>
+  <ul>
+   <li><b>1 caractère de type</b> : <code>-</code> fichier ordinaire, <code>d</code> dossier, <code>l</code> lien symbolique</li>
+   <li><b>9 caractères de permissions</b> : trois groupes de r, w, x — propriétaire, groupe, autres</li>
+   <li><b>un nombre</b> : le compteur de liens durs (salle 4)</li>
+   <li>propriétaire, groupe</li>
+   <li><b>la taille en octets</b></li>
+   <li>date de modification, puis le nom</li>
+  </ul>
+  <p>Dans chaque groupe l'ordre est toujours r puis w puis x. Un tiret signifie « cette permission est absente ».</p>`},
+ {k:'term',h:'Mission : observe avant de répondre',
+  goal:'liste en format long',
+  brief:"Trois entrées t'attendent, de trois natures différentes. Liste-les en format long et prends le temps de lire chaque colonne. La mission valide dès que tu as affiché le format long.",
+  setup:sh=>{ sh.root.children['notes']=Object.assign(fFile('x'.repeat(240),0o644),{mtime:T0-86400000});
+              sh.root.children['photos']=Object.assign(fDir(0o755),{mtime:T0-3600000});
+              sh.root.children['lancer']=Object.assign(fFile('#!/bin/sh\n',0o755),{mtime:T0}); },
+  terminal:'MISSION · LIRE LES COLONNES', dossier:'bac', raccourcis:['ls','man ls'],
+  verif:{type:'criteres', criteres:[
+    {label:"tu as affiché la liste au format long", test:(sh,h)=>h.some(c=>/^ls\s+.*l/.test(c))}]},
+  check:(sh,hist)=>hist.some(h=>/^ls\s+.*l/.test(h)),
+  hints:["C'est ls, avec l'option qui déplie une entrée par ligne avec tous ses détails.","ls -l"]},
+ {k:'mcq',h:'',q:"Sur la ligne du dossier <code>photos</code>, la colonne des tailles affiche 4096. Ça veut dire quoi ?",
+  opts:["4096 fichiers dedans","La taille en octets de l'entrée de dossier elle-même","Le numéro d'inode","Les permissions converties en décimal"],a:1,
+  why:"C'est toujours la taille en octets de l'entrée. Pour un dossier elle ne dit rien sur le contenu, d'où le XX du sujet à cet endroit."},
+ {k:'input',h:'',q:"Un fichier doit peser un nombre d'octets bien précis. Quelle commande te donne cette taille ?",
+  a:['wc -c fichier','wc -c'],accept:v=>/^wc\s+-c(\s|$)/.test(v),
+  why:"wc -c compte les octets. Le piège habituel : le saut de ligne ajouté par echo compte dans le total."},
+ {k:'mcq',h:'',q:"Tu dois obtenir un fichier en <code>-r-xr-x---</code> contenant du texte. Dans quel ordre travailler ?",
+  opts:["chmod puis écrire le contenu","Écrire le contenu puis chmod","Peu importe","chmod deux fois"],a:1,
+  why:"Cette cible n'a aucun w, pas même pour toi. Une fois posée, écrire dedans est refusé : tu te bloques dehors."}
+]},
+
+{
+id:'r3', file:'chmod', tag:'ex01/02', title:'chmod et l\'octal',
+sub:'r=4, w=2, x=1. Traduire dans les deux sens, sans hésiter.',
+steps:[
+ {k:'bits',h:'Manipule les bits',
+  b:"Clique les cases pour allumer ou éteindre chaque permission. Regarde le chiffre de chaque groupe suivre. Objectif : sentir pourquoi aucun total n'est ambigu."},
+ {k:'lesson',h:'Pourquoi ces valeurs',b:`
+  <p>r vaut 4, w vaut 2, x vaut 1. Ce sont des puissances de deux, donc chaque total de 0 à 7 correspond à une seule combinaison. 6 ne peut être que 4+2, jamais autre chose.</p>
+  <p>Un chiffre par groupe, dans l'ordre <b>propriétaire, groupe, autres</b>. La syntaxe met le mode avant le fichier.</p>
+  <p>Sur un <b>dossier</b>, x ne signifie pas « exécuter » mais « pouvoir entrer dedans ». C'est pour ça qu'on règle les permissions des dossiers en dernier.</p>`},
+ {k:'input',h:'',q:"Traduis <code>-rwxr-x---</code> en octal (les trois chiffres).",
+  a:['750'],why:"rwx=7, r-x=5, ---=0."},
+ {k:'input',h:'',q:"Traduis <code>526</code> en lettres (les 9 caractères, style rwxr-xr--).",
+  a:['r-x-w-rw-'],why:"5=r-x, 2=-w-, 6=rw-. Le 2 tout seul est le cas qu'on rate : écriture sans lecture."},
+ {k:'term',h:'Mission : atteins la cible exacte',
+  goal:'budget.csv en -r--rwx--x',
+  brief:"Le fichier <code>budget.csv</code> est en <code>-rw-rw-r--</code>. Amène-le exactement à <code>-r--rwx--x</code>. Calcule d'abord, tape ensuite, vérifie enfin.",
+  setup:sh=>{ sh.root.children['budget.csv']=fFile('mois,montant\n',0o664); },
+  terminal:'MISSION · LE MODE EXACT', dossier:'compta', raccourcis:['ls -l','man chmod'],
+  verif:{type:'permissions', cible:'budget.csv', mode:0o471},
+  check:sh=>{ const n=lookup(sh,'budget.csv'); return n&&n.mode===0o471; },
+  hints:["Découpe la cible en trois paquets de trois : r-- puis rwx puis --x.",
+         "r--=4, rwx=7, --x=1.",
+         "Le mode vient avant le nom du fichier dans la commande."]},
+ {k:'term',h:'Mission : le dossier verrouillé',
+  goal:'lire inventaire dans archives',
+  brief:"Le dossier <code>archives</code> contient un fichier <code>inventaire</code>, mais tu ne peux pas y entrer. Débloque l'accès, entre, et affiche le fichier.",
+  setup:sh=>{ const d=fDir(0o600); d.children['inventaire']=fFile('12 cartons\n'); sh.root.children['archives']=d; },
+  terminal:'MISSION · LE DOSSIER VERROUILLÉ', dossier:'depot', raccourcis:['ls -l','man chmod'],
+  verif:{type:'criteres', criteres:[
+    {label:"le dossier est devenu traversable", test:sh=>{const d=lookup(sh,'/archives'); return !!d&&!!((d.mode>>6)&1);}},
+    {label:"tu es entré dedans", test:(sh,h)=>h.some(c=>/^cd\s+.*archives/.test(c))},
+    {label:"le fichier est affiché", test:(sh,h)=>h.some(c=>/^cat\s+.*inventaire/.test(c))}]},
+  check:(sh,hist)=>{ const d=lookup(sh,'/archives'); return !!d&&!!((d.mode>>6)&1)&&hist.some(h=>/^cat\s+.*inventaire/.test(h)); },
+  hints:["Sans le bit x sur un dossier, cd est refusé. Regarde ce qui manque au groupe propriétaire.",
+         "Le propriétaire a rw-, soit 6. Il lui faut aussi le x, ce qui donne 7.",
+         "chmod avec le bon mode sur archives, puis cd archives, puis cat inventaire."]}
+]},
+
+{
+id:'r4', file:'liens', tag:'ex02', title:'Liens durs et symboliques',
+sub:'Deux étiquettes sur une boîte, ou un post-it qui note une adresse.',
+steps:[
+ {k:'lesson',h:'Deux mécanismes très différents',b:`
+  <p>Un fichier, c'est deux choses séparées : un <b>contenu</b> stocké quelque part (l'inode, avec ses permissions, sa taille, sa date) et un <b>nom</b> dans un dossier qui pointe dessus.</p>
+  <p><b>ln cible nom</b> crée un <b>lien dur</b> : un deuxième nom vers le même inode. Changer les permissions par l'un se voit sur l'autre, puisqu'elles appartiennent au contenu et pas au nom.</p>
+  <p><b>ln -s cible nom</b> crée un <b>lien symbolique</b> : un petit fichier à part dont le contenu est le texte du chemin visé. Sa taille est la longueur de ce texte.</p>`},
+ {k:'inode',h:'Observe la différence',
+  b:"Deux noms pointent vers la même boîte. Supprime un nom et regarde ce qui survit, dans chacun des deux cas."},
+ {k:'term',h:'Mission : fabrique les deux sortes',
+  goal:'un lien dur et un lien symbolique',
+  brief:"Le fichier <code>source</code> et le dossier <code>dossier</code> existent. Crée <code>copie_dure</code> comme lien dur vers <code>source</code>, et <code>pointeur</code> comme lien symbolique vers <code>dossier</code>. Contrôle le résultat en format long.",
+  setup:sh=>{ sh.root.children['dossier']=fDir(); sh.root.children['source']=fFile('contenu\n'); },
+  terminal:'MISSION · DEUX SORTES DE LIENS', dossier:'atelier', raccourcis:['ls -l','man ln'],
+  verif:{type:'criteres', criteres:[
+    {label:"copie_dure partage l'inode de source", test:sh=>{const a=lookup(sh,'source'),b=lookup(sh,'copie_dure'); return !!a&&!!b&&a===b;}},
+    {label:"pointeur est un lien symbolique vers dossier", test:sh=>{const c=lookup(sh,'pointeur'); return !!c&&c.type==='link'&&c.target==='dossier';}}]},
+  check:sh=>{ const a=lookup(sh,'source'),b=lookup(sh,'copie_dure'),c=lookup(sh,'pointeur');
+              return a&&b&&a===b&&c&&c.type==='link'&&c.target==='dossier'; },
+  hints:["Une seule commande fait les deux, avec ou sans une option d'une lettre. Consulte man ln.",
+         "Ordre des arguments : d'abord la cible, ensuite le nouveau nom.",
+         "Le lien symbolique, c'est la même commande avec -s."]},
+ {k:'mcq',h:'',q:"<code>copie_dure</code> est un lien dur vers <code>source</code>. Tu fais <code>chmod 400 source</code>. Que devient copie_dure ?",
+  opts:['Rien ne change','Elle passe aussi en 400','Elle est supprimée','Elle devient un lien mort'],a:1,
+  why:"Même inode. Les permissions sont une propriété du contenu, pas du nom qui y mène."},
+ {k:'input',h:'',q:"<code>ln -s rapports lien</code> : quelle taille fait <code>lien</code>, en octets ? (juste le nombre)",
+  a:['8'],why:"r-a-p-p-o-r-t-s = 8 caractères. Un lien symbolique ne stocke que le texte du chemin, rien d'autre."},
+ {k:'term',h:'Mission : casse un lien',
+  goal:'observer qui survit',
+  brief:"<code>data</code> est un fichier, <code>jumeau</code> un lien dur vers lui, <code>alias</code> un lien symbolique vers lui. Supprime <code>data</code>, puis essaie de lire <code>jumeau</code> et <code>alias</code>. Note lequel répond encore.",
+  setup:sh=>{ const f=fFile('mesures 2026\n'); sh.root.children['data']=f; sh.root.children['jumeau']=f;
+              sh.root.children['alias']=fLink('data'); },
+  terminal:'MISSION · CASSER UN LIEN', dossier:'atelier', raccourcis:['ls -l'],
+  verif:{type:'criteres', criteres:[
+    {label:"data est supprimé", test:sh=>!lookup(sh,'data')},
+    {label:"tu as lu jumeau après coup", test:(sh,h)=>h.some(c=>/^cat\s+.*jumeau/.test(c))},
+    {label:"tu as lu alias après coup", test:(sh,h)=>h.some(c=>/^cat\s+.*alias/.test(c))}]},
+  check:(sh,hist)=>!lookup(sh,'data') && hist.some(h=>/^cat\s+.*alias/.test(h)) && hist.some(h=>/^cat\s+.*jumeau/.test(h)),
+  hints:["Supprime data, puis affiche les deux autres avec cat.",
+         "Le lien dur garde le contenu en vie. Le symbolique pointe vers un nom qui n'existe plus."]},
+ {k:'mcq',h:'',q:"Pourquoi un lien symbolique s'affiche-t-il toujours <code>lrwxrwxrwx</code> ?",
+  opts:['Il est accessible à tous par sécurité','Ses permissions sont figées sous Linux ; ce sont celles de la cible qui décident','Il hérite des permissions du dossier','C\'est un bug d\'affichage'],a:1,
+  why:"On ne modifie pas les permissions d'un lien symbolique : l'affichage est constant, et l'accès réel dépend de la cible."}
+]},
+
+{
+id:'r5', file:'ssh', tag:'ex03', title:'Clés SSH',
+sub:'Une paire : une moitié se donne, l\'autre jamais.',
+steps:[
+ {k:'lesson',h:'Le principe',b:`
+  <p>Générer une clé produit deux fichiers dans <code>~/.ssh/</code> : la <b>privée</b> et la <b>publique</b>, cette dernière portant le suffixe <code>.pub</code>.</p>
+  <p>Le serveur garde la publique. À la connexion il envoie un défi que seule la privée sait résoudre. Aucun mot de passe ne circule, et la privée ne quitte jamais ta machine.</p>
+  <p>Une clé publique tient sur une ligne : le type de l'algorithme, la clé en base64, puis un commentaire sans aucun rôle cryptographique.</p>`},
+ {k:'term',h:'Mission : trouve la bonne moitié',
+  goal:'afficher la clé publique, pas l\'autre',
+  brief:"Le dossier des clés existe mais n'apparaît pas au premier coup d'œil. Trouve-le, puis affiche le contenu de la clé <b>publique</b>. Afficher la privée fait échouer la mission.",
+  setup:sh=>{ const d=fDir(0o700);
+    d.children['id_ed25519']=fFile('-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjEAAAAA...\n-----END OPENSSH PRIVATE KEY-----\n',0o600);
+    d.children['id_ed25519.pub']=fFile('ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExempleDeCleePubliqueFictive student@campus\n',0o644);
+    d.children['known_hosts']=fFile('git.exemple.net ssh-ed25519 AAAA...\n',0o600);
+    sh.root.children['.ssh']=d; },
+  terminal:'MISSION · LA BONNE MOITIÉ', dossier:'cles', raccourcis:['ls -a'],
+  verif:{type:'criteres', criteres:[
+    {label:"la clé publique est affichée", test:(sh,h)=>h.some(c=>/cat\s+.*id_ed25519\.pub/.test(c))},
+    {label:"la clé privée n'a jamais été affichée", interdit:true,
+     test:(sh,h)=>h.some(c=>/cat\s+[^|]*id_ed25519(\s|$)/.test(c))}]},
+  check:(sh,hist)=>hist.some(h=>/cat\s+.*id_ed25519\.pub/.test(h)) && !hist.some(h=>/cat\s+[^|]*id_ed25519(\s|$)/.test(h)),
+  hints:["Un nom qui commence par un point est masqué par ls. Une option d'une lettre montre tout.",
+         "ls -a pour repérer le dossier, puis entre dedans et liste son contenu.",
+         "Affiche celui dont le nom se termine par .pub, et surtout pas l'autre."]},
+ {k:'mcq',h:'',q:"Un champ web te demande ta clé. Le fichier que tu t'apprêtes à coller commence par <code>-----BEGIN OPENSSH PRIVATE KEY-----</code>. Tu fais quoi ?",
+  opts:['Je colle, c\'est ce qui est demandé','J\'arrête : c\'est la moitié privée, elle ne se publie jamais','Je colle seulement la première ligne','Je la chiffre avant de coller'],a:1,
+  why:"Publier une clé privée permet à n'importe qui d'usurper ton identité. La publique tient sur une ligne et commence par le nom de l'algorithme."},
+ {k:'mcq',h:'',q:"Tu viens de remplacer ta clé sur un serveur. Comment sais-tu que ça a marché ?",
+  opts:['Un mail de confirmation arrive','Une opération qui passe par SSH fonctionne à nouveau','ls -l sur la clé le montre','Le fichier change de taille'],a:1,
+  why:"La preuve par l'usage : si une connexion SSH aboutit, le serveur reconnaît bien ta nouvelle clé."}
+]},
+
+{
+id:'r6', file:'manpage', tag:'ex04', title:'RTFM : choisir la bonne option',
+sub:'Chercher dans le manuel, et prendre l\'option qui fait exactement ce qu\'on demande, ni plus.',
+steps:[
+ {k:'lesson',h:'Le manuel est l\'outil de l\'examen',b:`
+  <p>À l'exam final, pas d'internet : seulement <code>man</code>. Navigation : <code>/mot</code> pour chercher, <code>n</code> pour l'occurrence suivante, <code>q</code> pour quitter.</p>
+  <p>Le vrai réflexe à acquérir n'est pas de retenir des options par cœur, c'est de savoir formuler ce qu'on cherche puis de le trouver dans la page. Un sujet qui écrit « RTFM » teste exactement ça.</p>
+  <p>Et quand deux options font presque la même chose, celle qui en fait <b>le moins</b> est la bonne dès que l'énoncé dit de ne faire que ce qui est demandé.</p>`},
+ {k:'term',h:'Mission : compose la sortie exacte',
+  goal:'une seule ligne, triée, ponctuée, sans extras',
+  brief:"<code>man ls</code> fonctionne ici. Produis une liste <b>de toutes les entrées, y compris les cachées</b>, <b>triée par date de modification</b> (plus récent d'abord), <b>séparée par une virgule et un espace</b>, avec un <b>slash après les dossiers</b>, et <b>aucun autre symbole ajouté</b>.",
+  setup:sh=>{ sh.root.children['vieux.log']=Object.assign(fFile('a'),{mtime:T0-500000});
+              sh.root.children['images']=Object.assign(fDir(),{mtime:T0-300000});
+              sh.root.children['run']=Object.assign(fFile('x',0o755),{mtime:T0-100000});
+              sh.root.children['.tmp']=Object.assign(fFile('x'),{mtime:T0-200000}); },
+  terminal:'MISSION · COMPOSER LA SORTIE', dossier:'melange', raccourcis:['ls','man ls'],
+  verif:{type:'sortie', filtre:/^ls/, attendu:'./, ../, run, .tmp, images/, vieux.log\n'},
+  check:(sh,hist)=>{
+    const last=[...hist].reverse().find(h=>h.startsWith('ls'));
+    if(!last) return false;
+    const r=run(newShellFrom(sh),last);
+    return r.out==='./, ../, run, .tmp, images/, vieux.log\n';
+  },
+  hints:["Quatre options à combiner. Dans man ls, cherche /comma pour la ponctuation, et l'option de tri porte l'initiale du mot anglais pour « temps ».",
+         "Il te manque encore les entrées cachées, et le slash sur les dossiers. Pour le slash, deux options se ressemblent et ne font pas la même chose.",
+         "L'une ajoute uniquement le slash aux dossiers ; l'autre décore aussi les exécutables et les liens. Prends la discrète.",
+         "Montrer les cachées fait aussi apparaître le dossier courant et le dossier parent. C'est normal, ils commencent par un point eux aussi."],
+  post:"Remarque ce que <code>-a</code> a fait entrer : <code>./</code> et <code>../</code>. Le point et le double point sont des entrées cachées comme les autres. C'est pour ça qu'un énoncé qui veut les exclure prend la peine de le préciser."},
+ {k:'mcq',h:'',q:"Deux options ajoutent un slash aux dossiers. L'une ajoute en plus une étoile aux exécutables et un arobase aux liens. Laquelle prendre quand l'énoncé dit « fais seulement ce qui est demandé » ?",
+  opts:["Celle qui décore tout, c'est plus complet","Celle qui ajoute uniquement le slash","Les deux conviennent","Ni l'une ni l'autre, il faut un pipe"],a:1,
+  why:"Tout symbole non demandé est une différence avec la sortie attendue, donc une erreur. Le minimum suffisant est la bonne réponse."},
+ {k:'mcq',h:'',q:"Un autre énoncé, lui, <b>exclut</b> les fichiers cachés. Que faut-il ajouter à <code>ls</code> pour ça ?",
+  opts:["L'option qui montre tout","Rien : ls les masque déjà par défaut","Un filtre avec grep","Une option de tri"],a:1,
+  why:"Le comportement par défaut fait déjà le travail. C'est le sens inverse de la mission que tu viens de faire : là tu devais ajouter -a pour les faire apparaître, ici il n'y a rien à ajouter. Et -a fait aussi entrer le point et le double point, ce qui explique qu'un énoncé prenne la peine de les nommer."}
+]},
+
+{
+id:'r7', file:'git', tag:'rendu', title:'Git : le rendu, pas une sauvegarde',
+sub:'Ce qui n\'est pas poussé n\'existe pas.',
+steps:[
+ {k:'lesson',h:'Le dépôt EST le rendu',b:`
+  <p>La correction automatique clone ton dépôt distant. Elle ne voit jamais ton disque. Un projet égale un dépôt, dont l'adresse figure sur la page du projet.</p>
+  <p>Trois étapes, jamais deux : <code>git add -A</code> prépare, <code>git commit -m "msg"</code> enregistre <b>localement</b>, <code>git push</code> envoie au serveur.</p>
+  <p>Tes trois vérificateurs : <code>git status</code> (propre et à jour), <code>git ls-files</code> (ce que git connaît vraiment, donc ce qui sera corrigé), <code>git remote -v</code> (le bon dépôt ?).</p>`},
+ {k:'mcq',h:'',q:"add et commit faits, push oublié. Que voit la correction ?",
+  opts:['Tout, le commit suffit','Rien de nouveau : le commit est resté sur ta machine','La moitié','Une version compressée'],a:1,
+  why:"commit enregistre en local, push envoie. Sans push, le serveur ignore ton travail."},
+ {k:'input',h:'',q:"Quelle commande liste exactement ce que git connaît, donc ce qui sera corrigé ?",
+  a:['git ls-files'],why:"Plus fiable que ls, qui montre aussi les fichiers que git ignore ou n'a jamais enregistrés."},
+ {k:'mcq',h:'',q:"Un camarade a neuf dossiers d'exercices sur son disque, mais <code>git ls-files</code> n'en affiche qu'un seul. Diagnostic ?",
+  opts:['Dépôt corrompu','Le reste n\'a jamais été commité : presque rien ne sera corrigé','Normal, git compresse','Problème de clé SSH'],a:1,
+  why:"Les fichiers présents sur le disque ne comptent pas. Seuls les commits poussés existent pour la correction."},
+ {k:'mcq',h:'',q:"Pourquoi pousser dès le premier exercice, avant d'avoir fini ?",
+  opts:['Ça donne des points bonus','Ça teste le canal (clé, dépôt, droits) tant qu\'il reste du temps pour réparer','La régularité est notée','Pour réserver sa place'],a:1,
+  why:"Un push cassé découvert la veille du rendu coûte le module entier. Découvert au premier exercice, il coûte dix minutes."},
+ {k:'bug',
+  contexte:"Un camarade te dit que sa correction affiche zéro alors qu'il a tout fait. Il te montre son terminal :",
+  code:"$ ls\nex00  ex01  ex02  ex03\n$ git status\nOn branch main\nnothing to commit, working tree clean\n$ git log --oneline\n7f3a9c1 tout mes exos\n$ git ls-files\nex00/z",
+  q:"Où est le problème ?",
+  opts:["Son message de commit est trop vague",
+        "Un seul fichier a été enregistré par git : les autres dossiers n'ont jamais été ajoutés",
+        "Il lui manque un push, le commit est resté local",
+        "git log devrait afficher plus de lignes"],
+  a:1,
+  why:"<code>git status</code> dit « propre » parce qu'il ne parle que de ce que git suit déjà. <code>git ls-files</code> montre ce que git connaît vraiment, et il n'y a qu'un fichier. Les autres dossiers n'ont jamais été ajoutés : ils sont sur le disque, invisibles pour la correction. C'est pour ça que <code>ls</code> ne prouve rien et que <code>git ls-files</code> est le seul vrai contrôle."},
+ {k:'answer',h:'À dire à voix haute',
+  q:"Explique en trois phrases pourquoi « tout est sur mon disque, je rendrai à la fin » est une mauvaise idée.",
+  a:"Le rendu passe par le dépôt distant : la correction le clone et ne lit jamais mon disque. Sans add, commit et push, mon travail n'existe pas pour l'école. Et attendre la fin, c'est découvrir une clé cassée ou un mauvais dépôt quand il est trop tard pour corriger."}
+]},
+
+{
+id:'r8', file:'diffpatch', tag:'ex07', title:'diff et patch',
+sub:'Une recette de transformation, et la machine qui l\'applique.',
+steps:[
+ {k:'lesson',h:'Deux commandes réciproques',b:`
+  <p><code>diff v1 v2</code> produit la recette pour passer de v1 à v2. Les lignes préfixées <code>&lt;</code> viennent du premier fichier, celles préfixées <code>&gt;</code> du second. Les codes comme <code>1,2c1,8</code> disent « remplace les lignes 1-2 par les lignes 1-8 ».</p>
+  <p><code>patch</code> applique la recette dans l'autre sens. L'option <code>-o</code> écrit le résultat dans un nouveau fichier au lieu de modifier l'original sur place.</p>
+  <p>Vérification reine : refaire le diff entre l'original et ton résultat, et le comparer à la recette de départ. Identiques, donc juste par définition.</p>`},
+ {k:'mcq',h:'',q:"Dans la sortie de <code>diff v1 v2</code>, les lignes préfixées <code>&gt;</code> appartiennent à…",
+  opts:['v1','v2','Aux deux','Au diff lui-même'],a:1,
+  why:"Le fichier de gauche dans la commande est marqué <, celui de droite est marqué >."},
+ {k:'input',h:'',q:"Tu as <code>v1</code> et <code>changes.diff</code>. Écris la commande qui fabrique <code>v2</code> sans modifier v1.",
+  a:['patch -o v2 v1 changes.diff'],accept:v=>/^patch\s+/.test(v)&&/-o\s+v2/.test(v)&&/(^|\s)v1(\s|$)/.test(v)&&/changes\.diff/.test(v),
+  why:"Sans -o, patch modifierait v1 sur place et tu perdrais l'original, donc ton moyen de vérification."},
+ {k:'mcq',h:'',q:"Ton résultat pèse un octet de moins que celui attendu. Cause la plus probable ?",
+  opts:['Mauvaise version de patch','Recopie à la main : un espace en fin de ligne, invisible, perdu au passage','Disque plein','Compression automatique'],a:1,
+  why:"Espaces finaux et sauts de ligne ne se voient pas mais comptent. C'est précisément pour ça qu'on applique un patch au lieu de recopier."},
+ {k:'bug',
+  contexte:"Un camarade doit fabriquer <code>v2</code> à partir de <code>v1</code> et de la recette, puis vérifier son travail. Il a tapé ceci, et il n'arrive plus à vérifier quoi que ce soit :",
+  code:"$ patch v1 changes.diff\npatching file v1\n$ diff v1 v2\ndiff: v2: No such file or directory",
+  q:"Qu'est-ce qui s'est passé ?",
+  opts:["La recette était corrompue",
+        "patch a modifié v1 sur place : l'original a disparu, et v2 n'a jamais été créé",
+        "Il fallait taper la commande dans l'autre sens",
+        "diff ne sait pas comparer deux fichiers différents"],
+  a:1,
+  why:"Sans option de sortie, <code>patch</code> écrit le résultat <b>dans le fichier d'origine</b>. v1 est devenu le contenu attendu, et v2 n'existe pas. Le plus gênant n'est pas le fichier manquant : c'est que l'original a disparu, donc le moyen de vérification aussi. D'où l'option qui écrit ailleurs, et la sauvegarde avant toute opération destructive."},
+ {k:'answer',h:'À dire à voix haute',
+  q:"Comment prouves-tu que ton fichier reconstruit est correct ? Donne le raisonnement, puis les commandes.",
+  a:"Je refais le diff entre l'original et mon résultat, et je le compare à la recette fournie : s'ils sont identiques octet pour octet, mon fichier est par définition celui qui produit ce diff. En pratique : <code>diff v1 v2 &gt; check.diff</code> puis <code>diff check.diff changes.diff</code>, qui ne doit rien afficher."}
+]},
+
+{
+id:'r9', file:'find', tag:'ex08', title:'find : tester puis agir',
+sub:'Une seule commande qui filtre et agit, sans aucun chaînage.',
+steps:[
+ {k:'lesson',h:'Tests et actions',b:`
+  <p><code>find</code> parcourt une arborescence et évalue, pour chaque entrée, une expression faite de <b>tests</b> (le type, le nom) et d'<b>actions</b> (afficher, supprimer).</p>
+  <p>Les éléments qui se suivent forment un ET implicite, évalué de gauche à droite avec arrêt au premier faux. C'est ce qui permet d'enchaîner deux actions : elles ne s'exécutent que si les tests ont réussi, dans l'ordre. Aucun <code>;</code> ni <code>&amp;&amp;</code> nécessaire.</p>
+  <p>Le OU s'écrit <code>-o</code> et doit être groupé par des parenthèses <b>échappées</b> : sans backslash, le shell les interpréterait avant find. Même logique pour les motifs, qu'on met entre guillemets pour que le shell ne développe pas l'étoile.</p>`},
+ {k:'term',h:'Mission : le ménage',
+  goal:'afficher puis supprimer, en une commande',
+  brief:"Trouve tous les <b>fichiers</b> dont le nom se termine par <code>.bak</code> ou commence par <code>tmp_</code>, y compris dans les sous-dossiers. Affiche-les puis supprime-les, en <b>une seule commande find</b>. Le dossier <code>sauvegardes.bak</code> et les autres fichiers doivent survivre.",
+  setup:sh=>{ sh.root.children['garder.txt']=fFile('a');
+              sh.root.children['rapport.bak']=fFile('a');
+              sh.root.children['tmp_cache']=fFile('a');
+              sh.root.children['sauvegardes.bak']=fDir();
+              const s=fDir(); s.children['vieux.bak']=fFile('a'); s.children['ok.c']=fFile('a');
+              sh.root.children['sub']=s; },
+  terminal:'MISSION · LE MÉNAGE', dossier:'chantier', raccourcis:['ls -l','man find'],
+  verif:{type:'criteres', criteres:[
+    {label:"rapport.bak a disparu", test:sh=>!lookup(sh,'rapport.bak')},
+    {label:"tmp_cache a disparu", test:sh=>!lookup(sh,'tmp_cache')},
+    {label:"sub/vieux.bak a disparu aussi", test:sh=>!lookup(sh,'sub/vieux.bak')},
+    {label:"garder.txt et sub/ok.c sont intacts", test:sh=>!!lookup(sh,'garder.txt')&&!!lookup(sh,'sub/ok.c')},
+    {label:"le dossier sauvegardes.bak a survécu", test:sh=>{const d=lookup(sh,'sauvegardes.bak'); return !!d&&d.type==='dir';}}]},
+  check:sh=>{
+    const g=lookup(sh,'garder.txt'), d=lookup(sh,'sauvegardes.bak'), s=lookup(sh,'sub/ok.c');
+    const gone=!lookup(sh,'rapport.bak')&&!lookup(sh,'tmp_cache')&&!lookup(sh,'sub/vieux.bak');
+    return !!g&&!!d&&d.type==='dir'&&!!s&&gone; },
+  hints:["Structure : le point de départ, puis la restriction de type, puis le groupe de noms, puis les deux actions.",
+         "Le OU s'écrit -o, et le groupe se délimite par des parenthèses précédées d'un backslash.",
+         "Les motifs vont entre guillemets. L'étoile remplace n'importe quelle suite de caractères, avant ou après le texte fixe."],
+  post:"Le dossier <code>sauvegardes.bak</code> a survécu grâce à la restriction de type. Sans elle, tu supprimais un dossier entier et tout son contenu."},
+ {k:'mcq',h:'',q:"Pourquoi mettre les motifs entre guillemets, comme dans <code>-name \"*.bak\"</code> ?",
+  opts:['Pure convention','Pour empêcher le shell de remplacer l\'étoile avant que find reçoive le motif','Pour ignorer la casse','C\'est obligatoire pour toute option'],a:1,
+  why:"Sans guillemets, si un fichier correspondant existe dans le dossier courant, le shell substituerait son nom au motif et find chercherait la mauvaise chose."},
+ {k:'answer',h:'À dire à voix haute',
+  q:"L'énoncé interdit tout chaînage de commandes. Explique comment ta commande arrive quand même à afficher ET supprimer.",
+  a:"find accepte plusieurs actions dans une même expression. Pour chaque entrée qui passe les tests, il les exécute dans l'ordre : d'abord l'affichage du chemin, ensuite la suppression. Tout se déroule à l'intérieur de l'unique invocation de find, donc il n'y a ni point-virgule, ni double esperluette, ni pipe."}
+]},
+
+{
+id:'r10', file:'soutenance', tag:'boss', title:'Soutenance blanche', boss:true,
+sub:'Dix questions sur ton rendu réel, à voix haute, sans lire.',
+steps:[
+ {k:'lesson',h:'Règle du jeu',b:`
+  <p>Les salles précédentes t'entraînent sur des cas neufs, exprès, pour que tu apprennes le mécanisme et pas la réponse. Ici c'est l'inverse : ce sont tes vrais fichiers rendus, et les questions qu'un correcteur pose réellement.</p>
+  <p>Pour chaque question : réponds <b>à haute voix, en entier</b>, puis révèle. Sois honnête. Si tu as dû lire pour répondre, coche « pas encore ».</p>`},
+ {k:'viva'}
+]}
+];
+
+const VIVA=[
+ {q:"Pourquoi test3 et test5 affichent un 2 en deuxième colonne, et que se passe-t-il si on supprime test3 ?",
+  a:"Ce sont deux liens durs : deux noms vers le même inode. La colonne compte les noms qui pointent sur ce contenu. Supprimer test3 enlève un nom ; le contenu survit tant qu'il en reste un, donc test5 fonctionne toujours."},
+ {q:"Pourquoi test6 fait 5 octets et pourquoi aucun chmod dessus ?",
+  a:"C'est un lien symbolique dont le contenu est le texte « test0 », soit 5 caractères. Ses permissions affichées lrwxrwxrwx ne sont pas modifiables sous Linux : ce sont celles de la cible qui s'appliquent."},
+ {q:"Calcule chmod 715 en lettres, puis -rw-r----x en octal.",
+  a:"715 = rwx--xr-x. Et -rw-r----x = 641. Méthode : r=4, w=2, x=1, on additionne groupe par groupe, dans l'ordre propriétaire, groupe, autres."},
+ {q:"Dans midLS, pourquoi -p et pas -F ?",
+  a:"Les deux ajoutent un slash aux dossiers, mais -F ajoute aussi une étoile aux exécutables et un arobase aux liens symboliques. Le sujet dit « do only what is asked » : -p fait exactement ce qui est demandé."},
+ {q:"Dans git_commit.sh, pourquoi %H et pas %h ?",
+  a:"%H donne l'identifiant complet, 40 caractères hexadécimaux, ce que montre l'exemple du sujet. %h donne la forme abrégée. L'identifiant est une empreinte calculée sur le contenu, le parent, l'auteur et la date."},
+ {q:"Dans git_ignore.sh, à quoi sert --exclude-standard ?",
+  a:"--ignored a besoin de savoir quelles règles appliquer. --exclude-standard active les sources standard : .gitignore, .git/info/exclude et la config globale. Git refuse la combinaison sans lui."},
+ {q:"Dans clean, comment afficher puis supprimer sans aucun chaînage ?",
+  a:"find évalue une expression par entrée, avec un ET implicite et arrêt au premier faux. -print et -delete sont deux actions successives : elles ne s'exécutent que si les tests passent, dans l'ordre. Tout tient dans une seule invocation."},
+ {q:"À quoi sert -o dans patch, et comment vérifies-tu ton résultat ?",
+  a:"-o écrit le résultat dans un nouveau fichier au lieu de modifier l'original. Vérification : refaire diff a b et comparer à sw.diff ; s'ils sont identiques, b est correct par définition."},
+ {q:"Quelle est la différence entre clé publique et clé privée, et laquelle rends-tu ?",
+  a:"La privée reste sur ma machine et résout le défi du serveur ; elle ne se partage jamais. La publique se distribue librement et sert au serveur à vérifier. Je rends la publique, copiée sous le nom id_ed25519_pub."},
+ {q:"Un camarade dit : « tout est sur mon disque, je pousserai à la fin ». Que réponds-tu ?",
+  a:"Que la correction automatique clone le dépôt distant et ne voit jamais son disque : sans add, commit et push, son travail n'existe pas. Et qu'attendre la fin, c'est découvrir trop tard une clé SSH cassée ou un mauvais dépôt."}
+];
+
+/* ==========================================================================
+   3. ÉTAT + PERSISTANCE
+   ========================================================================== */
+
+/* --- 4. application --- */
+/* Couche applicative du lab : état, progression, révision espacée, rendu.
+
+   Écrite une seule fois pour les quatre modules. Elle attend que la page lui
+   fournisse `MODULE`, `ROOMS` et `VIVA`, plus le moteur correspondant :
+   le simulateur shell (newShell, run, lookup…) ou l'interpréteur C (runC).
+   Elle détecte lequel est présent et n'active que les étapes qui vont avec.
+
+   Ce qui a disparu par rapport à la version précédente : les xp et le compteur
+   de jours consécutifs. Un total de points qui ne sert qu'à payer des indices
+   ressemble à un score sans en être un, et une série entretenue pour la série
+   n'apprend rien. Ce qui reste est ce qui veut dire quelque chose : les salles
+   validées, les bits de permission qui s'allument, et la file de révision. */
+
+const MODE_SHELL = typeof newShell === 'function';
+const MODE_C = typeof runC === 'function';
+
+/* ==========================================================================
+   1. ÉTAT ET PERSISTANCE
+   ========================================================================== */
+const KEY = MODULE.cle;
+let S = { rooms:{}, srs:{}, aide:{}, last:null, viva:{} };
+
+const store = {
+  async get(){
+    try{ if(window.storage){ const r=await window.storage.get(KEY); return r&&r.value?JSON.parse(r.value):null; } }catch(e){}
+    try{ const v=window.localStorage&&localStorage.getItem(KEY); return v?JSON.parse(v):null; }catch(e){}
+    return null;
+  },
+  async set(v){
+    const s=JSON.stringify(v);
+    try{ if(window.storage){ await window.storage.set(KEY,s); return; } }catch(e){}
+    try{ if(window.localStorage) localStorage.setItem(KEY,s); }catch(e){}
+  }
+};
+const aujourdhui = () => new Date().toISOString().slice(0,10);
+const save = () => store.set(S);
+
+/* --- révision espacée : boîtes de Leitner --- */
+const BOITES = [0,1,3,7,16];
+/* `avecAide` n'est pas cosmétique : une tâche résolue avec un indice retombe
+   en boîte 0, donc elle revient dès demain, même si la réponse était juste.
+   C'est ce qui remplace le coût en points. Un marquage qui n'agirait sur rien
+   serait exactement le faux signal qu'on a voulu supprimer. */
+function srsAdd(id, juste, avecAide){
+  const e = S.srs[id] || {box:0};
+  e.box = (juste && !avecAide) ? Math.min(4, e.box+1) : 0;
+  const d = new Date(); d.setDate(d.getDate() + BOITES[e.box]);
+  e.due = d.toISOString().slice(0,10);
+  if(avecAide) S.aide[id] = true; else delete S.aide[id];
+  S.srs[id] = e; save();
+}
+function srsDues(){
+  const t = aujourdhui();
+  return Object.keys(S.srs).filter(k => !S.srs[k].due || S.srs[k].due <= t);
+}
+/* Les questions rejouables en révision : QCM, saisies, et les questions orales.
+   Les orales n'y entraient pas, alors que la note vient d'une soutenance :
+   ce qu'on n'a pas su dire ne revenait jamais. C'était l'inversion la plus
+   coûteuse du lab. */
+function questionsRejouables(){
+  const out = [];
+  ROOMS.forEach(r => r.steps.forEach((s,i) => {
+    if(['mcq','input','answer','predict','bug','term','code'].includes(s.k))
+      out.push({ id: r.id+'.'+i, room: r, step: s });
+  }));
+  return out;
+}
+
+/* ==========================================================================
+   2. OUTILS DE RENDU
+   ========================================================================== */
+const $ = s => document.querySelector(s);
+const echappe = x => String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const etiquette = txt => { const d=document.createElement('div'); d.className='lab'; d.textContent=txt; return d; };
+const elVerdict = () => { const d=document.createElement('div'); d.className='verdict'; return d; };
+
+/* `ton` vaut 'note' pour une question, 'devine' pour une prédiction. Se
+   tromper en devinant avant l'explication est le mécanisme même, pas un
+   échec : « raté » y serait un contresens et découragerait de tenter. */
+function poseVerdict(el, ok, attendu, obtenu, why, ton){
+  el.classList.add('show');
+  const mot = ton==='devine'
+    ? (ok ? '✓ bien vu' : '→ pas tout à fait, et c\'est sans importance')
+    : (ok ? '✓ juste' : '✗ raté');
+  let h = '<div class="vline '+(ok?'good':'bad')+'" role="status">'+mot+'</div>';
+  if(!ok && attendu!==undefined)
+    h += '<div class="vs"><span class="k">ATTENDU</span><span class="v good">'+echappe(attendu)+'</span>'+
+         '<span class="k">OBTENU</span><span class="v bad">'+(obtenu?echappe(obtenu):'<i>rien</i>')+'</span></div>';
+  if(why) h += '<div class="why">'+why+'</div>';
+  el.innerHTML = h;
+}
+
+function nTaches(r){
+  return r.steps.filter(s => !['lesson','bits','inode','ascii','mem'].includes(s.k)).length || 1;
+}
+function etatSalle(r){ return S.rooms[r.id] || {done:0, cleared:false}; }
+function premiereNonFaite(){
+  for(let i=0;i<ROOMS.length;i++) if(!etatSalle(ROOMS[i]).cleared) return i;
+  return ROOMS.length;
+}
+function bitsDe(fraction){
+  const n = Math.round(Math.min(1,fraction)*9);
+  let s='';
+  for(let i=0;i<9;i++) s += i<n ? 'rwxrwxrwx'[i] : '-';
+  return s;
+}
+
+/* ==========================================================================
+   3. ACCUEIL DU MODULE
+   ========================================================================== */
+const vueAccueil = $('#accueil'), vueSalle = $('#salle');
+const teteSalle = $('#teteSalle'), corpsSalle = $('#corpsSalle');
+
+function peindreAccueil(){
+  const finies = ROOMS.filter(r => etatSalle(r).cleared).length;
+  $('#compteSalles').textContent = finies + ' / ' + ROOMS.length + ' salles';
+  const barre = $('#bitsModule');
+  barre.innerHTML='';
+  bitsDe(finies/ROOMS.length).split('').forEach(c => {
+    const s=document.createElement('span'); s.textContent=c;
+    if(c!=='-') s.className='on'; barre.appendChild(s);
+  });
+  barre.setAttribute('aria-label', finies+' salles validées sur '+ROOMS.length);
+
+  const corps = $('#lsbody'); corps.innerHTML='';
+  const courante = premiereNonFaite();
+  /* Sur un écran de téléphone, dix lignes dont neuf inertes remplissent tout
+     l'espace sans rien apprendre. On montre ce qui est ouvert, plus la salle
+     suivante pour savoir où l'on va, et on replie le reste derrière un bouton.
+     Rien n'est caché définitivement : le repli est un pli, pas une porte. */
+  const limite = Math.min(ROOMS.length, courante + 2);
+  const ligne = (r,i) => {
+    const st = etatSalle(r), ouverte = i <= courante;
+    const b = document.createElement('button');
+    b.className = 'lsrow' + (st.cleared?' done':(st.done?' part':''));
+    b.disabled = !ouverte;
+    b.innerHTML =
+      '<span class="mode">'+ (st.cleared ? '-rwxrwxrwx' : '-'+bitsDe(st.done/nTaches(r))) +'</span>'+
+      '<span class="nm"><b>'+r.file+'</b><span>'+r.title+'</span></span>'+
+      '<span class="badge">'+(st.cleared ? '✓' : ouverte ? (st.done ? st.done+'/'+nTaches(r) : r.tag) : '🔒')+'</span>';
+    if(!ouverte) b.setAttribute('aria-label', r.file+' : verrouillée, termine la salle précédente');
+    b.onclick = () => ouvrirSalle(i);
+    return b;
+  };
+  ROOMS.slice(0, limite).forEach((r,i) => corps.appendChild(ligne(r,i)));
+  const reste = ROOMS.length - limite;
+  if(reste > 0){
+    const plus = document.createElement('button');
+    plus.className = 'voirplus'; plus.type = 'button';
+    plus.setAttribute('aria-expanded','false');
+    plus.textContent = 'voir les ' + reste + ' salle' + (reste>1?'s':'') + ' suivante' + (reste>1?'s':'');
+    plus.onclick = () => {
+      plus.remove();
+      ROOMS.slice(limite).forEach((r,k) => corps.appendChild(ligne(r, limite+k)));
+    };
+    corps.appendChild(plus);
+  }
+  $('#totalLigne').textContent = 'total '+ROOMS.length+' salles — ' +
+    (finies===ROOMS.length ? 'chmod 777 : tout est allumé.' : 'les suivantes s\'ouvrent au fur et à mesure.');
+
+  const dues = srsDues().length, connues = Object.keys(S.srs).length;
+  const avecAide = Object.keys(S.aide).length;
+  $('#srsT').textContent = dues ? dues+' question'+(dues>1?'s':'')+' à revoir aujourd\'hui'
+                                : 'Rien à revoir pour le moment';
+  $('#srsS').textContent = connues
+    ? connues+' questions en mémoire' + (avecAide ? ', dont '+avecAide+' résolue'+(avecAide>1?'s':'')+' avec aide qui revien'+(avecAide>1?'nent':'t')+' plus vite' : '')
+      + '. Les ratées reviennent demain, les acquises s\'espacent (1, 3, 7, 16 jours).'
+    : 'Réponds aux questions des salles : elles entrent dans la file de révision.';
+  $('#srsBtn').disabled = dues === 0;
+}
+
+/* ==========================================================================
+   4. OUVERTURE ET PROGRESSION D'UNE SALLE
+   ========================================================================== */
+let COURANTE = null;
+
+function ouvrirSalle(idx){
+  const r = ROOMS[idx];
+  COURANTE = { r, idx, faites:0, total:nTaches(r), aides:0 };
+  vueAccueil.classList.add('hidden'); vueSalle.classList.remove('hidden');
+  window.scrollTo(0,0);
+  teteSalle.innerHTML =
+    '<div class="l1"><button class="back" id="retour" aria-label="Retour à la liste des salles">&larr; ls ..</button>'+
+    '<h1>'+r.title+'</h1></div>'+
+    '<div class="l2"><div class="bits" id="bitsSalle" role="img"></div>'+
+    '<span class="count" id="compteSalle"></span></div>';
+  $('#retour').onclick = retourAccueil;
+  corpsSalle.innerHTML = '';
+  r.steps.forEach((s,i) => { const el = construireEtape(r,s,i); if(el) corpsSalle.appendChild(el); });
+  peindreTeteSalle();
+}
+function peindreTeteSalle(){
+  const b = $('#bitsSalle'); if(!b) return;
+  b.innerHTML='';
+  bitsDe(COURANTE.faites/COURANTE.total).split('').forEach(c => {
+    const s=document.createElement('span'); s.textContent=c; if(c!=='-') s.className='on'; b.appendChild(s);
+  });
+  b.setAttribute('aria-label','progression : '+COURANTE.faites+' tâches sur '+COURANTE.total);
+  $('#compteSalle').textContent = COURANTE.faites+' / '+COURANTE.total +
+    (COURANTE.aides ? ' · '+COURANTE.aides+' avec aide' : '');
+}
+function tacheFinie(avecAide){
+  COURANTE.faites++;
+  if(avecAide) COURANTE.aides++;
+  peindreTeteSalle();
+  if(COURANTE.r.id === '__revision'){
+    if(COURANTE.faites >= COURANTE.total) corpsSalle.appendChild(finRevision());
+    return;
+  }
+  const st = S.rooms[COURANTE.r.id] || {done:0, cleared:false};
+  st.done = Math.max(st.done, COURANTE.faites);
+  if(COURANTE.faites >= COURANTE.total) st.cleared = true;
+  S.rooms[COURANTE.r.id] = st;
+  save();
+  if(COURANTE.faites >= COURANTE.total) corpsSalle.appendChild(finSalle());
+}
+function finSalle(){
+  const d = document.createElement('div'); d.className='end';
+  const suivante = COURANTE.idx+1 < ROOMS.length ? ROOMS[COURANTE.idx+1] : null;
+  d.innerHTML = '<div class="t">salle validée — '+COURANTE.r.file+'</div>'+
+    '<div class="s">'+(COURANTE.aides
+      ? COURANTE.aides+' tâche'+(COURANTE.aides>1?'s':'')+' avec aide : '+
+        (COURANTE.aides>1?'elles retournent':'elle retourne')+' en boîte 0, donc '+
+        (COURANTE.aides>1?'elles reviennent':'elle revient')+' dès la prochaine révision.'
+      : 'Sans aucun indice. Ces questions reviendront plus tard, quand tu risqueras de les avoir oubliées.')+
+    '</div><div class="s" style="margin-top:8px">Tu sais la faire. Saurais-tu l\'expliquer sans écran ?</div>'+
+    '<div class="row"></div>';
+  const row = d.querySelector('.row');
+  const refaire = document.createElement('button');
+  refaire.className='btn ghost'; refaire.textContent='refaire';
+  refaire.onclick = () => ouvrirSalle(COURANTE.idx);
+  row.appendChild(refaire);
+  const suite = document.createElement('button'); suite.className='btn';
+  if(suivante){ suite.textContent='suivante : '+suivante.file; suite.onclick=()=>ouvrirSalle(COURANTE.idx+1); }
+  else { suite.textContent='retour au menu'; suite.onclick=retourAccueil; }
+  row.appendChild(suite);
+  peindreAccueil();
+  setTimeout(()=>d.scrollIntoView({behavior:'smooth',block:'center'}),60);
+  return d;
+}
+function finRevision(){
+  const d=document.createElement('div'); d.className='end';
+  d.innerHTML='<div class="t">révision terminée</div>'+
+    '<div class="s">Les ratées reviennent demain, les autres s\'espacent.</div><div class="row"></div>';
+  const b=document.createElement('button'); b.className='btn'; b.textContent='retour au menu';
+  b.onclick=retourAccueil; d.querySelector('.row').appendChild(b);
+  peindreAccueil();
+  setTimeout(()=>d.scrollIntoView({behavior:'smooth',block:'center'}),60);
+  return d;
+}
+function retourAccueil(){
+  vueSalle.classList.add('hidden'); vueAccueil.classList.remove('hidden');
+  peindreAccueil(); window.scrollTo(0,0);
+}
+
+/* ==========================================================================
+   5. CONSTRUCTION DES ÉTAPES
+   ========================================================================== */
+function construireEtape(r, s, i){
+  const id = r.id+'.'+i;
+  switch(s.k){
+    case 'lesson':  return blocLecon(s);
+    case 'predict': return blocChoix(s, id, 'DEVINE, PUIS VÉRIFIE', 'devine');
+    case 'mcq':     return blocChoix(s, id, 'QUESTION', 'note');
+    case 'bug':     return blocDiagnostic(s, id);
+    case 'input':   return blocSaisie(s, id);
+    case 'answer':  return blocOral(s, id);
+    case 'term':    return MODE_SHELL ? blocMission(s, id) : null;
+    case 'code':    return MODE_C ? blocCode(s, id) : null;
+    case 'bits':    return MODE_SHELL ? blocWidget(s, widgetBits) : null;
+    case 'inode':   return MODE_SHELL ? blocWidget(s, widgetInode) : null;
+    case 'ascii':   return MODE_C ? blocWidget(s, widgetAscii) : null;
+    case 'mem':     return MODE_C ? blocWidget(s, widgetMemoire) : null;
+    case 'viva':    return blocViva();
+    default:        return null;
+  }
+}
+
+function blocLecon(s){
+  const w=document.createElement('div'); w.className='step';
+  const n=document.createElement('div'); n.className='notion';
+  n.appendChild(etiquette('NOTION'));
+  n.insertAdjacentHTML('beforeend','<h2>'+s.h+'</h2>'+s.b);
+  w.appendChild(n); return w;
+}
+function blocWidget(s, fabrique){
+  const w=document.createElement('div'); w.className='step';
+  const c=document.createElement('div'); c.className='box';
+  c.appendChild(etiquette('À MANIPULER'));
+  c.insertAdjacentHTML('beforeend','<h2>'+s.h+'</h2><p>'+s.b+'</p>');
+  c.appendChild(fabrique());
+  w.appendChild(c); return w;
+}
+
+function blocChoix(s, id, titre, ton){
+  const w=document.createElement('div'); w.className='step';
+  const c=document.createElement('div'); c.className='box';
+  c.appendChild(etiquette(titre));
+  c.insertAdjacentHTML('beforeend','<div class="q">'+s.q+'</div>');
+  const o=document.createElement('div'); o.className='opts'; o.setAttribute('role','group');
+  const v=elVerdict();
+  s.opts.forEach((t,oi)=>{
+    const b=document.createElement('button'); b.className='opt'; b.type='button';
+    b.innerHTML='<span class="k" aria-hidden="true">'+'ABCDEF'[oi]+'</span><span>'+t+'</span>';
+    b.onclick=()=>{
+      o.querySelectorAll('.opt').forEach(x=>x.disabled=true);
+      const ok = oi===s.a;
+      b.classList.add(ok?'right':'wrong');
+      if(!ok) o.children[s.a].classList.add('right');
+      poseVerdict(v, ok, undefined, undefined, s.why, ton);
+      // Une réponse fausse n'est pas « avec aide » : seul un indice demandé
+      // compte comme de l'aide. Se tromper fait partie du travail.
+      srsAdd(id, ok, false);
+      tacheFinie(false);
+    };
+    o.appendChild(b);
+  });
+  c.appendChild(o); c.appendChild(v); w.appendChild(c); return w;
+}
+
+/* « Trouve l'erreur » : on montre un travail plausible mais faux et on demande
+   le diagnostic. C'est la compétence que la soutenance exige réellement, dans
+   les deux sens : défendre son propre code, et corriger celui d'un camarade.
+   Les erreurs viennent de celles que la suite de tests attrape déjà, donc de
+   fautes réellement commises et non inventées pour l'exercice. */
+function blocDiagnostic(s, id){
+  const w=document.createElement('div'); w.className='step';
+  const c=document.createElement('div'); c.className='box';
+  c.appendChild(etiquette("TROUVE L'ERREUR"));
+  c.insertAdjacentHTML('beforeend',
+    '<div class="q">'+s.contexte+'</div>'+
+    '<pre class="faute" aria-label="le travail à diagnostiquer">'+echappe(s.code)+'</pre>'+
+    '<div class="q" style="margin-top:12px">'+s.q+'</div>');
+  const o=document.createElement('div'); o.className='opts'; o.setAttribute('role','group');
+  const v=elVerdict();
+  s.opts.forEach((t,oi)=>{
+    const b=document.createElement('button'); b.className='opt'; b.type='button';
+    b.innerHTML='<span class="k" aria-hidden="true">'+'ABCDEF'[oi]+'</span><span>'+t+'</span>';
+    b.onclick=()=>{
+      o.querySelectorAll('.opt').forEach(x=>x.disabled=true);
+      const ok=oi===s.a;
+      b.classList.add(ok?'right':'wrong');
+      if(!ok) o.children[s.a].classList.add('right');
+      poseVerdict(v, ok, undefined, undefined, s.why, 'note');
+      srsAdd(id, ok, false);
+      tacheFinie(false);
+    };
+    o.appendChild(b);
+  });
+  c.appendChild(o); c.appendChild(v); w.appendChild(c); return w;
+}
+
+function blocSaisie(s, id){
+  const w=document.createElement('div'); w.className='step';
+  const c=document.createElement('div'); c.className='box';
+  c.appendChild(etiquette('QUESTION'));
+  c.insertAdjacentHTML('beforeend','<div class="q">'+s.q+'</div>');
+  const row=document.createElement('div'); row.className='answer';
+  const inp=document.createElement('input');
+  inp.spellcheck=false; inp.autocomplete='off'; inp.autocapitalize='off';
+  inp.setAttribute('aria-label','ta réponse');
+  const go=document.createElement('button'); go.className='btn'; go.type='button'; go.textContent='valider';
+  const v=elVerdict();
+  const valider=()=>{
+    if(go.disabled) return;
+    const val=inp.value.trim().replace(/\s+/g,' ');
+    go.disabled=true; inp.disabled=true;
+    const ok = s.accept ? s.accept(val) : s.a.some(x=>x.toLowerCase()===val.toLowerCase());
+    poseVerdict(v, ok, s.a[0], val, s.why, 'note');
+    srsAdd(id, ok, false);
+    tacheFinie(false);
+  };
+  go.onclick=valider;
+  inp.addEventListener('keydown',e=>{ if(e.key==='Enter') valider(); });
+  row.appendChild(inp); row.appendChild(go);
+  c.appendChild(row); c.appendChild(v); w.appendChild(c); return w;
+}
+
+/* Question orale. Elle entre désormais dans la file de révision : la note
+   vient d'une soutenance, et ce qu'on n'a pas su dire doit revenir. */
+function blocOral(s, id){
+  const w=document.createElement('div'); w.className='step';
+  const c=document.createElement('div'); c.className='box';
+  c.appendChild(etiquette((s.h||'À DIRE À VOIX HAUTE').toUpperCase()));
+  c.insertAdjacentHTML('beforeend','<div class="q">'+s.q+'</div>');
+  const btn=document.createElement('button'); btn.className='btn ghost'; btn.type='button';
+  btn.textContent='j\'ai répondu, montrer le modèle';
+  const boite=document.createElement('div'); boite.className='answerbox hidden';
+  boite.innerHTML='<div class="lab2">RÉPONSE MODÈLE</div>'+s.a;
+  const row=document.createElement('div');
+  row.style.cssText='display:flex;gap:8px;margin-top:10px;flex-wrap:wrap';
+  btn.onclick=()=>{
+    boite.classList.remove('hidden'); btn.classList.add('hidden');
+    const oui=document.createElement('button'); oui.className='btn'; oui.type='button'; oui.textContent='je l\'ai dit';
+    const non=document.createElement('button'); non.className='btn ghost'; non.type='button'; non.textContent='pas encore';
+    oui.onclick=()=>{ row.innerHTML='<span style="color:var(--ok);font-size:.83rem">✓ acquis</span>';
+      srsAdd(id,true,false); tacheFinie(false); };
+    non.onclick=()=>{ row.innerHTML='<span style="color:var(--amber2);font-size:.83rem">à retravailler, ça repasse aujourd\'hui</span>';
+      srsAdd(id,false,false); tacheFinie(false); };
+    row.appendChild(oui); row.appendChild(non);
+  };
+  c.appendChild(btn); c.appendChild(boite); c.appendChild(row);
+  w.appendChild(c); return w;
+}
+
+/* ==========================================================================
+   6. PANNEAUX « ATTENDU CONTRE OBTENU »
+   ==========================================================================
+   Chaque type de mission a son propre attendu : un mode de permissions, un
+   contenu de fichier, une sortie de commande, ou une liste de conditions.
+   Le panneau montre la CIBLE dès le départ, parce qu'elle est déjà dans
+   l'énoncé, mais ne compare qu'après la première commande : sinon on peut
+   tâtonner en regardant l'écart et arriver au résultat sans jamais faire le
+   raisonnement, qui est toute la leçon. */
+
+function modeLettres(m){
+  let s='';
+  for(let g=2;g>=0;g--){ const v=(m>>(g*3))&7;
+    s += (v&4?'r':'-')+(v&2?'w':'-')+(v&1?'x':'-'); }
+  return s;
+}
+const octalDe = m => [0,1,2].map(g=>(m>>((2-g)*3))&7).join('');
+const ATTENTE = '<p class="attente">La comparaison s\'affichera après ta première commande. '+
+                'Fais le raisonnement d\'abord.</p>';
+const montre = t => t==='' ? '<span class="vide">(vide)</span>' : echappe(t);
+
+function panneauPermissions(v, sh, aTente){
+  const n = lookup(sh, v.cible);
+  const veut = modeLettres(v.mode), a = n ? modeLettres(n.mode) : '---------';
+  const ok = !!n && n.mode === v.mode;
+  let h = '<div class="mgrid" role="img" aria-label="cible '+veut+', soit '+octalDe(v.mode)+
+          ' en octal'+(aTente?' ; actuellement '+a+', soit '+(n?octalDe(n.mode):'inconnu'):'')+'">';
+  h += '<span class="rl">CIBLE</span>';
+  for(let g=0;g<3;g++){ h+='<span class="grp">';
+    for(let i=0;i<3;i++) h+='<span class="cell want">'+veut[g*3+i]+'</span>';
+    h+='</span>'; }
+  h += '<span class="oct want">'+octalDe(v.mode)+'</span>';
+  if(aTente){
+    h += '<span class="rl">ACTUEL</span>';
+    for(let g=0;g<3;g++){ h+='<span class="grp">';
+      for(let i=0;i<3;i++){ const k=g*3+i;
+        h+='<span class="cell '+(a[k]===veut[k]?'hit':'miss')+'">'+a[k]+'</span>'; }
+      h+='</span>'; }
+    h += '<span class="oct now'+(ok?' hit':'')+'">'+(n?octalDe(n.mode):'???')+'</span>';
+  }
+  h += '</div>' + (aTente?'':ATTENTE);
+  const ecarts = [...a].filter((c,i)=>c!==veut[i]).length;
+  return { html:h, ok, resume: aTente ? (ok?'conforme':'écart sur '+ecarts+' position(s)') : 'en attente' };
+}
+
+function panneauTexte(v, obtenu, aTente, libelle){
+  const ok = obtenu === v.attendu;
+  let h = '<div class="txtcmp"><span class="k">'+libelle+'</span>'+
+          '<pre class="want">'+montre(v.attendu)+'</pre>';
+  if(aTente) h += '<span class="k">OBTENU</span><pre class="'+(ok?'hit':'miss')+'">'+montre(obtenu)+'</pre>';
+  h += '</div>' + (aTente?'':ATTENTE);
+  return { html:h, ok, resume: aTente ? (ok?'conforme':'différent') : 'en attente' };
+}
+
+function panneauCriteres(v, sh, hist, aTente){
+  const res = v.criteres.map(c => ({ label:c.label, interdit:!!c.interdit, ok:!!c.test(sh,hist) }));
+  const remplis = res.filter(c => c.interdit ? !c.ok : c.ok).length;
+  const h = '<ul class="crit">' + res.map(c => {
+    // Un critère « interdit » est rempli tant qu'il n'est PAS déclenché :
+    // c'est ainsi qu'on vérifie qu'une clé privée n'a jamais été affichée.
+    const bon = c.interdit ? !c.ok : c.ok;
+    const classe = !aTente ? 'todo' : (bon ? 'done' : (c.interdit ? 'rate' : 'todo'));
+    const marque = !aTente ? '·' : (bon ? '✓' : (c.interdit ? '✗' : '·'));
+    return '<li class="'+classe+'"><span class="m" aria-hidden="true">'+marque+'</span><span>'+c.label+'</span></li>';
+  }).join('') + '</ul>' + (aTente?'':ATTENTE);
+  return { html:h, ok: remplis===res.length,
+           resume: aTente ? remplis+' / '+res.length : 'en attente' };
+}
+
+/* ==========================================================================
+   7. MISSION DANS LE TERMINAL
+   ========================================================================== */
+function blocMission(s, id){
+  const w=document.createElement('div'); w.className='step';
+  const c=document.createElement('div'); c.className='box mission';
+  c.appendChild(etiquette('MISSION'));
+  c.insertAdjacentHTML('beforeend',
+    '<div class="goal">'+(s.goalHtml || s.goal)+'</div><div class="brief">'+s.brief+'</div>');
+
+  const sh = newShell(s.setup);
+  const hist = [];
+  let resolu=false, iIndice=0, aTente=false;
+
+  const diff=document.createElement('div'); diff.className='diff';
+  const dh=document.createElement('div'); dh.className='dh';
+  dh.innerHTML='<span>ATTENDU CONTRE OBTENU</span><span class="etat">—</span>';
+  const db=document.createElement('div'); db.className='db';
+  diff.appendChild(dh); diff.appendChild(db);
+
+  function rafraichir(){
+    /* Repli : une mission sans descripteur `verif` retombe sur un critère
+       unique adossé à son `check`. Ça reste un vrai retour, pas un booléen
+       muet, et ça permet d'écrire les descripteurs module par module sans
+       casser ceux qui n'en ont pas encore. */
+    const v = s.verif || { type:'criteres',
+      criteres:[{ label: s.goal || 'objectif atteint', test:(sh,h)=>!!s.check(sh,h) }] };
+    let p;
+    if(v.type==='permissions') p = panneauPermissions(v, sh, aTente);
+    else if(v.type==='contenu'){
+      const n = lookup(sh, v.fichier);
+      p = panneauTexte(v, n && n.type==='file' ? n.content : '', aTente, 'CONTENU ATTENDU');
+    }
+    else if(v.type==='sortie'){
+      const derniere = [...hist].reverse().find(h => v.filtre ? v.filtre.test(h) : true);
+      let obtenu='';
+      if(derniere){ const r = run(newShellFrom(sh), derniere); obtenu = r.out !== undefined ? r.out : ''; }
+      p = panneauTexte(v, obtenu, aTente, 'SORTIE ATTENDUE');
+    }
+    else p = panneauCriteres(v, sh, hist, aTente);
+    db.innerHTML = p.html;
+    const et = dh.querySelector('.etat');
+    et.textContent = p.resume;
+    et.style.color = (aTente && p.ok) ? 'var(--ok)' : 'var(--mute)';
+    return p.ok;
+  }
+
+  const term=document.createElement('div'); term.className='term';
+  /* Chaque mission garde SON terminal : chacune a son propre setup, donc son
+     propre système de fichiers de départ. Un terminal partagé devrait se
+     réinitialiser entre les missions ou mélanger les états, ce qui serait
+     plus déroutant que répétitif. L'en-tête sert à les distinguer. */
+  const titre=document.createElement('div'); titre.className='termtitre';
+  titre.innerHTML='<span>'+(s.terminal||'SIMULATEUR')+'</span><span class="pwd">~/'+(s.dossier||'travail')+'</span>';
+  const out=document.createElement('div'); out.className='termout';
+  out.setAttribute('role','log'); out.setAttribute('aria-live','polite');
+  const ligne=document.createElement('div'); ligne.className='termline';
+  ligne.innerHTML='<span class="p" aria-hidden="true">%&gt;</span>';
+  const inp=document.createElement('input');
+  inp.spellcheck=false; inp.autocomplete='off'; inp.autocapitalize='off'; inp.autocorrect='off';
+  inp.setAttribute('aria-label','commande à exécuter');
+  ligne.appendChild(inp);
+  const barre=document.createElement('div'); barre.className='termbar';
+  const zoneIndices=document.createElement('div');
+
+  const ecris=(html,cls)=>{ const d=document.createElement('div'); if(cls) d.className=cls;
+    d.innerHTML=html; out.appendChild(d); out.scrollTop=out.scrollHeight; };
+
+  let curseur=-1;
+  function lance(cmd){
+    if(!cmd || resolu) return;
+    ecris('<span class="cmd"><span class="p">%&gt;</span> '+echappe(cmd)+'</span>');
+    hist.push(cmd); curseur=hist.length; aTente=true;
+    const r=run(sh,cmd);
+    if(r && r.err) ecris(echappe(r.err),'err');
+    else if(r && r.out) ecris(echappe(r.out).replace(/\n$/,''));
+    if(rafraichir()){
+      resolu=true; inp.disabled=true; bIndice.disabled=true;
+      ecris('<span class="sys">✓ objectif atteint.</span>');
+      if(s.post){ const p=document.createElement('div'); p.className='hint'; p.innerHTML=s.post; zoneIndices.appendChild(p); }
+      // La mission entre dans la file de révision comme les questions. Résolue
+      // avec un indice, elle retombe en boîte 0 et revient dès demain : c'est
+      // ce qui donne un sens réel au marquage « avec aide », au lieu d'un
+      // simple affichage qui n'agirait sur rien.
+      if(id) srsAdd(id, true, iIndice>0);
+      tacheFinie(iIndice>0);
+    }
+  }
+  inp.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){ const v=inp.value.trim(); inp.value=''; lance(v); return; }
+    if(e.key==='ArrowUp'){ e.preventDefault(); if(curseur>0){ curseur--; inp.value=hist[curseur]; } return; }
+    if(e.key==='ArrowDown'){ e.preventDefault();
+      if(curseur<hist.length-1){ curseur++; inp.value=hist[curseur]; } else { curseur=hist.length; inp.value=''; } }
+  });
+  (s.raccourcis || ['ls -l','help']).forEach(cmd => {
+    const b=document.createElement('button'); b.className='chip'; b.type='button'; b.textContent=cmd;
+    b.onclick=()=>lance(cmd); barre.appendChild(b);
+  });
+  const bIndice=document.createElement('button'); bIndice.className='chip'; bIndice.type='button';
+  bIndice.textContent='indice';
+  bIndice.onclick=()=>{
+    if(iIndice>=s.hints.length) return;
+    const h=document.createElement('div'); h.className='hint';
+    h.innerHTML='<span class="n">INDICE '+(iIndice+1)+' SUR '+s.hints.length+'</span>'+s.hints[iIndice];
+    zoneIndices.appendChild(h); iIndice++;
+    if(iIndice>=s.hints.length){ bIndice.disabled=true; bIndice.textContent='plus d\'indice'; }
+  };
+  barre.appendChild(bIndice);
+
+  term.appendChild(titre); term.appendChild(out); term.appendChild(ligne); term.appendChild(barre);
+  c.appendChild(diff); c.appendChild(term); c.appendChild(zoneIndices);
+  ecris('<span class="sys">Système de fichiers simulé. Tes commandes ont de vrais effets.</span>');
+  rafraichir();
+  w.appendChild(c); return w;
+}
+
+/* ==========================================================================
+   8. MISSION DE CODE C
+   ==========================================================================
+   Le retour cas par cas existait déjà et il est bon : on ne change que son
+   apparence pour l'aligner sur le reste, pas ce qu'il fait. */
+function blocCode(s, id){
+  const w=document.createElement('div'); w.className='step';
+  const c=document.createElement('div'); c.className='box mission';
+  c.appendChild(etiquette('MISSION'));
+  c.insertAdjacentHTML('beforeend',
+    '<div class="brief">'+s.brief+'</div><div class="sig">signature imposée : <b>'+echappe(s.sig)+'</b></div>');
+  const ed=document.createElement('textarea');
+  ed.className='code'; ed.spellcheck=false; ed.autocapitalize='off'; ed.autocomplete='off';
+  ed.setAttribute('aria-label','ton code C');
+  ed.value=s.start||'';
+  ed.addEventListener('keydown',e=>{
+    if(e.key==='Tab'){ e.preventDefault();
+      const a=ed.selectionStart,b=ed.selectionEnd;
+      ed.value=ed.value.slice(0,a)+'    '+ed.value.slice(b);
+      ed.selectionStart=ed.selectionEnd=a+4; }
+  });
+  const barre=document.createElement('div'); barre.className='runbar';
+  const lancer=document.createElement('button'); lancer.className='btn'; lancer.type='button';
+  lancer.textContent='compiler et tester';
+  const remettre=document.createElement('button'); remettre.className='btn ghost'; remettre.type='button';
+  remettre.textContent='repartir de zéro';
+  const bIndice=document.createElement('button'); bIndice.className='chip'; bIndice.type='button';
+  bIndice.textContent='indice';
+  barre.appendChild(lancer); barre.appendChild(remettre); barre.appendChild(bIndice);
+  const res=document.createElement('div'); res.style.marginTop='11px';
+  const zoneIndices=document.createElement('div');
+  let resolu=false, iIndice=0;
+
+  remettre.onclick=()=>{ if(resolu) return; ed.value=s.start||''; res.innerHTML=''; };
+  bIndice.onclick=()=>{
+    if(iIndice>=s.hints.length) return;
+    const h=document.createElement('div'); h.className='hint';
+    h.innerHTML='<span class="n">INDICE '+(iIndice+1)+' SUR '+s.hints.length+'</span>'+s.hints[iIndice];
+    zoneIndices.appendChild(h); iIndice++;
+    if(iIndice>=s.hints.length){ bIndice.disabled=true; bIndice.textContent='plus d\'indice'; }
+  };
+  lancer.onclick=()=>{
+    if(resolu) return;
+    res.innerHTML='';
+    let tout=true, arret=false;
+    for(const tc of s.tests){
+      const r=runC(ed.value, tc.harness, {entry:'main'});
+      const d=document.createElement('div');
+      if(!r.ok){
+        tout=false; arret=true; d.className='tcase ko';
+        d.innerHTML='<span class="lbl">✗ '+echappe(tc.label)+'</span><span class="d">erreur : '+echappe(r.err)+'</span>';
+      } else if(r.out===tc.expect){
+        d.className='tcase ok';
+        d.innerHTML='<span class="lbl">✓ '+echappe(tc.label)+'</span><span class="d">sortie : '+echappe(JSON.stringify(r.out))+'</span>';
+      } else {
+        tout=false; d.className='tcase ko';
+        d.innerHTML='<span class="lbl">✗ '+echappe(tc.label)+'</span>'+
+          '<span class="d">attendu '+echappe(JSON.stringify(tc.expect))+' · obtenu '+echappe(JSON.stringify(r.out))+'</span>';
+      }
+      res.appendChild(d);
+      if(arret) break;
+    }
+    if(tout){
+      resolu=true; lancer.disabled=true; ed.readOnly=true; bIndice.disabled=true;
+      const ok=document.createElement('div');
+      ok.style.cssText='color:var(--ok);font-size:.85rem;margin-top:6px;font-weight:700';
+      ok.textContent='✓ tous les cas passent.';
+      res.appendChild(ok);
+      if(s.post){ const p=document.createElement('div'); p.className='hint'; p.innerHTML=s.post; zoneIndices.appendChild(p); }
+      if(id) srsAdd(id, true, iIndice>0);
+      tacheFinie(iIndice>0);
+    }
+  };
+  c.appendChild(ed); c.appendChild(barre); c.appendChild(res); c.appendChild(zoneIndices);
+  w.appendChild(c); return w;
+}
+
+/* ==========================================================================
+   9. SOUTENANCE BLANCHE
+   ========================================================================== */
+function blocViva(){
+  const w=document.createElement('div'); w.className='step';
+  const carte=document.createElement('div'); carte.className='box';
+  w.appendChild(carte);
+  let i=0, bons=0;
+  function montrer(){
+    if(i>=VIVA.length){
+      // Un seuil unique pour le message et pour la validation : les deux
+      // divergeaient (8 annoncé, 7 appliqué) dans la version précédente.
+      const seuil=Math.ceil(VIVA.length*0.8);
+      carte.innerHTML='<h2>Fin de la soutenance blanche</h2>'+
+        '<p style="font-size:.9rem">Score honnête : <b>'+bons+' / '+VIVA.length+'</b>.</p>'+
+        '<p style="font-size:.88rem;color:var(--dim);margin-top:8px">'+
+        (bons>=seuil ? 'Tu peux aller te faire corriger par un humain. C\'est la seule vraie répétition.'
+                     : 'Reprends les salles correspondant à ce que tu n\'as pas su dire, puis reviens.')+'</p>';
+      // L'identifiant est déduit de la dernière salle, jamais écrit en dur :
+      // la version précédente écrivait 'r10' sur les quatre pages, or il
+      // n'existe que dans shell00, et la salle ne se validait donc jamais
+      // ailleurs pendant que le hub comptait une salle fantôme.
+      const idBoss=ROOMS[ROOMS.length-1].id;
+      const st=S.rooms[idBoss]||{done:0,cleared:false};
+      st.done=1; st.cleared=bons>=seuil; S.rooms[idBoss]=st; save(); peindreAccueil();
+      return;
+    }
+    const q=VIVA[i];
+    carte.innerHTML='';
+    carte.appendChild(etiquette('QUESTION '+(i+1)+' SUR '+VIVA.length));
+    carte.insertAdjacentHTML('beforeend','<div class="q">'+q.q+'</div>'+
+      '<p style="font-size:.8rem;color:var(--mute)">À voix haute, en entier, avant de révéler.</p>');
+    const rev=document.createElement('button'); rev.className='btn ghost'; rev.type='button'; rev.textContent='révéler';
+    const boite=document.createElement('div'); boite.className='answerbox hidden';
+    boite.innerHTML='<div class="lab2">CE QU\'UN CORRECTEUR ATTEND</div>'+q.a;
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;gap:8px;margin-top:11px;flex-wrap:wrap';
+    rev.onclick=()=>{
+      boite.classList.remove('hidden'); rev.classList.add('hidden');
+      const oui=document.createElement('button'); oui.className='btn'; oui.type='button'; oui.textContent='j\'avais dit ça';
+      const non=document.createElement('button'); non.className='btn ghost'; non.type='button'; non.textContent='pas encore';
+      // Les réponses orales entrent dans la révision, comme les autres.
+      oui.onclick=()=>{ bons++; srsAdd('viva.'+i,true,false); i++; montrer(); };
+      non.onclick=()=>{ srsAdd('viva.'+i,false,false); i++; montrer(); };
+      row.appendChild(oui); row.appendChild(non);
+    };
+    carte.appendChild(rev); carte.appendChild(boite); carte.appendChild(row);
+  }
+  montrer();
+  return w;
+}
+
+/* ==========================================================================
+   10. RÉVISION ESPACÉE
+   ========================================================================== */
+function lancerRevision(){
+  const dues=new Set(srsDues());
+  const pioche=questionsRejouables().filter(q=>dues.has(q.id));
+  // Les questions de soutenance dues, retrouvées par leur index.
+  VIVA.forEach((q,i)=>{ if(dues.has('viva.'+i)) pioche.push({id:'viva.'+i, step:{k:'answer',h:'À dire à voix haute',q:q.q,a:q.a}}); });
+  if(!pioche.length) return;
+  pioche.sort(()=>Math.random()-0.5);
+  vueAccueil.classList.add('hidden'); vueSalle.classList.remove('hidden'); window.scrollTo(0,0);
+  COURANTE={ r:{id:'__revision'}, idx:-1, faites:0, total:pioche.length, aides:0 };
+  teteSalle.innerHTML=
+    '<div class="l1"><button class="back" id="retour">&larr; ls ..</button><h1>Révision</h1></div>'+
+    '<div class="l2"><div class="bits" id="bitsSalle" role="img"></div><span class="count" id="compteSalle"></span></div>';
+  $('#retour').onclick=retourAccueil;
+  corpsSalle.innerHTML='';
+  corpsSalle.insertAdjacentHTML('beforeend',
+    '<p style="font-size:.85rem;color:var(--dim);margin-top:12px">Mélangées entre les salles, exprès : '+
+    'réviser un thème d\'affilée donne l\'illusion de savoir.</p>');
+  pioche.forEach(q=>{
+    const el = q.step.k==='answer' ? blocOral(q.step,q.id)
+             : q.step.k==='input'  ? blocSaisie(q.step,q.id)
+             : q.step.k==='term'   ? blocMission(q.step,q.id)
+             : q.step.k==='code'   ? blocCode(q.step,q.id)
+             : q.step.k==='bug'    ? blocDiagnostic(q.step,q.id)
+             : blocChoix(q.step,q.id,'QUESTION','note');
+    corpsSalle.appendChild(el);
+  });
+  peindreTeteSalle();
+}
+
+/* ==========================================================================
+   11. SAUVEGARDE MANUELLE
+   ==========================================================================
+   Format inchangé : {x, r, s, k, l}. Les xp et la série n'existent plus, mais
+   les clés restent écrites et relues pour qu'un code enregistré avant ce
+   changement reste lisible, et qu'un code produit maintenant reste lisible
+   par une version antérieure. L'étudiant garde ses codes hors de l'appli. */
+function encoderEtat(){
+  const json=JSON.stringify({x:0, r:S.rooms, s:S.srs, k:0, l:S.last, h:S.aide});
+  return btoa(unescape(encodeURIComponent(json))).replace(/=+$/,'');
+}
+function decoderEtat(code){
+  const c=code.trim().replace(/\s+/g,'');
+  const pad='='.repeat((4-c.length%4)%4);
+  const o=JSON.parse(decodeURIComponent(escape(atob(c+pad))));
+  if(typeof o.r!=='object' || o.r===null) throw new Error('structure inattendue');
+  return { rooms:o.r||{}, srs:o.s||{}, aide:o.h||{}, last:o.l||null, viva:{} };
+}
+
+/* ==========================================================================
+   12. DÉMARRAGE
+   ========================================================================== */
+function brancherAccueil(){
+  $('#srsBtn').onclick=lancerRevision;
+  const zone=$('#ioZone'), texte=$('#ioTexte'), msg=$('#ioMsg');
+  const ouvrir=mode=>{
+    zone.classList.remove('hidden'); msg.textContent=''; msg.style.color='var(--dim)';
+    $('#ioGo').classList.toggle('hidden', mode==='export');
+    if(mode==='export'){
+      texte.value=encoderEtat(); texte.select();
+      if(navigator.clipboard) navigator.clipboard.writeText(texte.value)
+        .then(()=>{ msg.textContent='copié — colle-le dans une note'; })
+        .catch(()=>{ msg.textContent='sélectionne tout et copie à la main'; });
+      else msg.textContent='sélectionne tout et copie à la main';
+    } else { texte.value=''; texte.placeholder='colle ton code de sauvegarde ici'; texte.focus(); }
+    zone.scrollIntoView({behavior:'smooth',block:'nearest'});
+  };
+  $('#expBtn').onclick=()=>ouvrir('export');
+  $('#impBtn').onclick=()=>ouvrir('import');
+  $('#ioFermer').onclick=()=>zone.classList.add('hidden');
+  $('#ioGo').onclick=()=>{
+    try{
+      S=Object.assign(S, decoderEtat(texte.value)); save(); peindreAccueil();
+      msg.textContent='progression restaurée'; msg.style.color='var(--ok)';
+    }catch(e){
+      msg.textContent='code illisible : '+(e.message||e); msg.style.color='var(--ko)';
+    }
+  };
+}
+(async function demarrer(){
+  const sauve=await store.get();
+  if(sauve) S=Object.assign(S, sauve);
+  if(!S.aide) S.aide={};
+  S.last=aujourdhui();
+  brancherAccueil();
+  peindreAccueil();
+  save();
+})();
+</script>
+</body>
+</html>

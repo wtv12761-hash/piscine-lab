@@ -1,0 +1,18 @@
+# Fichiers générés par tests/extract.js depuis les pages livrées.
+# Ils sont reconstruits à chaque exécution : les versionner ferait diverger
+# une copie du code réellement en ligne, ce que l'extraction existe pour éviter.
+tests/_*.js
+
+# Supports de cours de l'école : sujets PDF, archives de ressources, listes de
+# vidéos. Ce dépôt est public et ces documents ne sont pas mon travail : les
+# republier poserait une question de droits qui ne me revient pas de trancher.
+# Ils restent en local, à côté du dépôt, pour servir de référence.
+shell00/
+shell01/
+C00/
+C01/
+
+# Résidus d'outils et de systèmes de fichiers
+.DS_Store
+Thumbs.db
+node_modules/

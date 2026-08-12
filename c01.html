@@ -1,0 +1,1899 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>c01.lab — pointeurs</title>
+<style>
+/* Thème du lab. Écrit une fois, intégré dans chaque page à la construction.
+
+   Palette d'origine conservée : ardoise bleutée, accent rouge, tout en
+   monospace. Deux valeurs ont été remontées parce qu'elles échouaient au
+   seuil AA de contraste (4,5) alors qu'elles portaient toutes les étiquettes
+   de l'interface : --mute passait à 2,86 sur --panel, --lock à 1,98.
+   Mesuré, pas estimé. */
+:root{
+  --bg:#141920; --bg2:#1a212a; --panel:#1e2630; --panel2:#26303c;
+  --line:#2f3a47; --line2:#3e4b5a;
+  --amber:#e5533d; --amber2:#ff7d68;
+  --ink:#d8dfe8; --dim:#8c99a9;
+  --mute:#8f9cad;   /* 5,47 sur --panel */
+  --lock:#7a8697;   /* 4,13 sur --panel */
+  --ok:#3ddc84; --ko:#ff5f56;
+  --mono:ui-monospace,'JetBrains Mono','Cascadia Code','Fira Code',Menlo,Consolas,monospace;
+  --r:6px;
+  --tap:44px;       /* zone tactile minimale */
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--mono);font-size:15px;line-height:1.6;
+  -webkit-font-smoothing:antialiased;padding-bottom:env(safe-area-inset-bottom)}
+/* nowrap : un mode comme -r--rwx--x contient des tirets, et le navigateur
+   coupe volontiers une ligne après un tiret. Le mode se retrouvait scindé,
+   illisible pour une notion qui se lit par groupes de trois. */
+code{background:#0f141b;padding:1px 5px;border-radius:3px;color:var(--amber2);font-size:.88em;white-space:nowrap}
+code.long{white-space:normal;word-break:break-word}
+b{color:var(--amber2);font-weight:700}
+a{color:var(--amber2)}
+button{font-family:var(--mono);font-size:1rem;color:inherit}
+.hidden{display:none!important}
+:focus-visible{outline:2px solid var(--amber2);outline-offset:2px;border-radius:3px}
+/* Le site doit rester utilisable sans animation. */
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+.wrap{max-width:760px;margin:0 auto;padding:0 14px 96px}
+
+/* ---------- en-têtes ---------- */
+.rhead{position:sticky;top:0;z-index:5;background:rgba(20,25,32,.94);backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--line);margin:0 -14px;padding:10px 14px 9px}
+.rhead .l1{display:flex;align-items:center;gap:10px}
+.rhead .l2{display:flex;align-items:center;gap:10px;margin-top:8px}
+.rhead h1{font-size:1.02rem;font-weight:700;letter-spacing:.3px;flex:1;min-width:0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.back{background:none;border:1px solid var(--line2);color:var(--dim);border-radius:var(--r);
+  min-width:var(--tap);min-height:var(--tap);padding:0 11px;cursor:pointer;font-size:.85rem;flex:none}
+.back:hover{border-color:var(--amber2);color:var(--amber2)}
+
+/* La progression EST le cours : les bits de permission s'allument. */
+.bits{display:flex;gap:2px;font-size:.9rem;letter-spacing:1px}
+.bits span{color:var(--lock);width:.72em;text-align:center}
+.bits span.on{color:var(--ok)}
+.count{font-size:.78rem;color:var(--mute);margin-left:auto}
+
+/* ---------- accueil du module : la liste des salles ---------- */
+.brand{font-size:.78rem;color:var(--mute);padding:16px 0 4px}
+.brand .u{color:var(--amber2)}
+.brand h1{font-size:1.3rem;color:var(--ink);letter-spacing:.5px;margin-top:3px}
+.lsbox{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin-top:14px}
+.lshead{background:var(--panel2);padding:8px 14px;font-size:.74rem;color:var(--mute);border-bottom:1px solid var(--line)}
+.lsbody{padding:6px}
+.lsrow{display:flex;align-items:center;gap:11px;width:100%;text-align:left;background:none;
+  border:1px solid transparent;border-radius:5px;padding:10px 9px;cursor:pointer;color:var(--ink);
+  min-height:var(--tap)}
+.lsrow:hover:not(:disabled){background:var(--panel2);border-color:var(--line2)}
+.lsrow:disabled{cursor:not-allowed}
+.lsrow .mode{color:var(--lock);letter-spacing:.5px;white-space:nowrap;font-size:.8rem;flex:none}
+.lsrow.part .mode{color:var(--amber2)} .lsrow.done .mode{color:var(--ok)}
+.lsrow .nm{flex:1;min-width:0}
+.lsrow .nm b{color:inherit;font-weight:700;font-size:.9rem}
+.lsrow .nm span{display:block;color:var(--dim);font-size:.78rem;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lsrow:disabled .nm b,.lsrow:disabled .nm span{color:var(--lock)}
+.lsrow .badge{font-size:.74rem;color:var(--mute);flex:none}
+.lsrow.done .badge{color:var(--ok)}
+.total{padding:2px 15px 11px;font-size:.77rem;color:var(--mute)}
+.voirplus{width:100%;min-height:var(--tap);background:none;border:1px dashed var(--line2);
+  border-radius:5px;color:var(--mute);font-size:.79rem;cursor:pointer;margin-top:4px}
+.voirplus:hover{border-color:var(--amber2);color:var(--amber2)}
+
+.panneau{margin-top:12px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+  padding:13px 14px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.panneau.accent{border-left:3px solid var(--amber)}
+.panneau .t{font-size:.88rem}
+.panneau .s{font-size:.78rem;color:var(--dim);margin-top:3px}
+.panneau .actions{display:flex;gap:8px;flex-wrap:wrap}
+
+/* ---------- rythme d'une salle ---------- */
+.step{margin-top:14px}
+.lab{font-size:.7rem;letter-spacing:1.4px;color:var(--mute);display:flex;align-items:center;gap:7px;margin-bottom:7px}
+.lab::after{content:'';flex:1;height:1px;background:var(--line)}
+/* NOTION : pas de cadre. Une leçon est du texte, pas un objet. */
+.notion{padding:2px 2px 4px}
+.notion h2{font-size:.97rem;color:var(--ink);margin-bottom:8px}
+.notion p{margin-bottom:9px;font-size:.92rem;color:var(--dim)}
+.notion p:last-child{margin-bottom:0}
+.notion ul{margin:8px 0 10px 19px;font-size:.9rem;color:var(--dim)}
+.notion li{margin-bottom:5px}
+.notion b,.notion strong{color:var(--ink);font-weight:700}
+/* Les blocs qui demandent une action ont un cadre. */
+.box{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px}
+.box h2{font-size:.97rem;margin-bottom:6px}
+.box>p{font-size:.88rem;color:var(--dim);margin-bottom:12px}
+/* MISSION : le seul élément à bord accentué. C'est le cœur de la salle. */
+.mission{border-left:3px solid var(--amber);
+  background:linear-gradient(90deg,rgba(229,83,61,.07),transparent 60%),var(--panel)}
+.mission .lab{color:var(--amber2)}
+.mission .lab::after{background:rgba(229,83,61,.3)}
+.goal{font-size:.93rem;margin-bottom:10px}
+.goal em{color:var(--amber2);font-style:normal}
+.brief{font-size:.87rem;color:var(--dim)}
+.sig{font-size:.82rem;color:var(--mute);margin:10px 0 2px}
+.sig b{color:var(--amber2)}
+
+/* ---------- attendu contre obtenu ---------- */
+.diff{margin:12px 0 4px;border:1px solid var(--line2);border-radius:var(--r);overflow:hidden}
+.diff .dh{background:var(--panel2);padding:6px 11px;font-size:.71rem;letter-spacing:1px;color:var(--mute);
+  display:flex;justify-content:space-between;align-items:center;gap:8px}
+.diff .db{padding:11px}
+/* Largeurs calées sur 375 px : neuf cellules, les étiquettes et l'octal
+   doivent tenir dans les 295 px réellement disponibles dans le panneau. */
+.mgrid{display:grid;grid-template-columns:auto repeat(3,1fr) auto;gap:5px 6px;align-items:center;font-size:.85rem;min-width:0}
+.mgrid .rl{color:var(--mute);font-size:.72rem;letter-spacing:.5px;white-space:nowrap}
+.mgrid .oct{font-weight:700;font-size:1rem;text-align:right;white-space:nowrap;padding-left:2px}
+.mgrid .oct.want{color:var(--dim)}
+.mgrid .oct.now{color:var(--ko)} .mgrid .oct.now.hit{color:var(--ok)}
+.grp{display:flex;gap:2px;justify-content:center}
+.cell{flex:1;max-width:30px;min-width:18px;height:30px;line-height:30px;text-align:center;
+  border-radius:3px;font-weight:700;border:1px solid transparent}
+.cell.want{background:var(--bg2);color:var(--dim);border-color:var(--line2)}
+/* Trait plein contre trait tireté : juste et faux se distinguent sans
+   dépendre de la couleur, indiscernable pour une partie des gens. */
+.cell.hit{background:rgba(61,220,132,.14);color:var(--ok);border-color:rgba(61,220,132,.45);border-style:solid}
+.cell.miss{background:rgba(255,95,86,.14);color:var(--ko);border-color:rgba(255,95,86,.6);
+  border-style:dashed;text-decoration:underline;text-underline-offset:2px}
+.attente{margin-top:10px;font-size:.79rem;color:var(--mute);font-style:italic}
+
+/* comparaison de deux textes, pour un contenu de fichier ou une sortie */
+.txtcmp{display:grid;grid-template-columns:auto 1fr;gap:5px 10px;font-size:.82rem;align-items:start}
+.txtcmp .k{color:var(--mute);font-size:.71rem;letter-spacing:.5px;white-space:nowrap;padding-top:3px}
+.txtcmp pre{font-family:var(--mono);white-space:pre-wrap;word-break:break-word;
+  background:var(--bg2);border:1px solid var(--line2);border-radius:4px;padding:6px 8px;min-width:0}
+.txtcmp pre.want{color:var(--dim)}
+.txtcmp pre.hit{color:var(--ok);border-color:rgba(61,220,132,.45)}
+.txtcmp pre.miss{color:var(--ko);border-color:rgba(255,95,86,.6);border-style:dashed}
+.txtcmp .vide{color:var(--lock);font-style:italic}
+
+/* liste de critères */
+.crit{display:flex;flex-direction:column;gap:7px}
+.crit li{display:flex;gap:9px;align-items:flex-start;font-size:.86rem;list-style:none}
+.crit .m{flex:none;width:1.15em;font-weight:700}
+.crit .todo{color:var(--mute)} .crit .todo .m{color:var(--lock)}
+.crit .done{color:var(--ok)}
+.crit .rate{color:var(--ko)} .crit .rate .m{color:var(--ko)}
+
+/* cas de test des missions C : même apparence, comportement inchangé */
+.tcase{display:flex;flex-direction:column;gap:2px;padding:8px 10px;border-radius:4px;
+  border:1px solid var(--line2);margin-bottom:7px;font-size:.82rem}
+.tcase.ok{border-color:rgba(61,220,132,.45);background:rgba(61,220,132,.07)}
+.tcase.ko{border-color:rgba(255,95,86,.5);background:rgba(255,95,86,.07);border-style:dashed}
+.tcase .lbl{font-weight:700}
+.tcase.ok .lbl{color:var(--ok)} .tcase.ko .lbl{color:var(--ko)}
+.tcase .d{color:var(--dim);font-size:.78rem;word-break:break-word}
+
+/* ---------- terminal ---------- */
+.term{background:#0f141b;border:1px solid var(--line2);border-radius:var(--r);overflow:hidden;margin-top:12px}
+.termtitre{display:flex;justify-content:space-between;gap:10px;align-items:center;background:var(--panel2);
+  padding:7px 12px;font-size:.72rem;letter-spacing:.6px;color:var(--mute);border-bottom:1px solid var(--line)}
+.termtitre .pwd{color:var(--lock);white-space:nowrap}
+.termout{padding:11px 12px;font-size:.82rem;max-height:230px;overflow-y:auto;white-space:pre-wrap;
+  word-break:break-word;-webkit-overflow-scrolling:touch}
+.termout>div{margin-bottom:2px}
+.termout .cmd{color:var(--ink)} .termout .cmd .p{color:var(--amber2)}
+.termout .err{color:var(--ko)} .termout .sys{color:var(--mute)}
+.termline{display:flex;align-items:center;gap:8px;padding:0 12px;border-top:1px solid var(--line);min-height:var(--tap)}
+.termline .p{color:var(--amber2);font-size:.86rem;flex:none}
+.termline input{flex:1;min-width:0;background:none;border:none;color:var(--ink);font-family:var(--mono);
+  font-size:16px;   /* 16px empêche iOS de zoomer au focus */
+  padding:11px 0;outline:none;align-self:stretch;min-height:var(--tap)}
+.termbar{display:flex;gap:8px;padding:8px 12px;border-top:1px solid var(--line);flex-wrap:wrap;align-items:center}
+.chip{background:var(--bg2);border:1px solid var(--line2);color:var(--dim);border-radius:999px;
+  min-height:var(--tap);padding:0 15px;font-size:.79rem;cursor:pointer}
+.chip:hover:not(:disabled){border-color:var(--amber2);color:var(--amber2)}
+.chip:disabled{opacity:.45;cursor:not-allowed}
+
+/* ---------- éditeur de code C ---------- */
+textarea.code{width:100%;min-height:190px;background:#0f141b;border:1px solid var(--line2);
+  border-radius:var(--r);color:var(--ink);font-family:var(--mono);font-size:14px;padding:11px 12px;
+  resize:vertical;line-height:1.55;margin-top:10px;tab-size:4}
+textarea.code:focus{border-color:var(--amber2);outline:none}
+.runbar{display:flex;gap:8px;margin-top:9px;flex-wrap:wrap}
+
+.faute{background:#0f141b;border:1px solid var(--line2);border-left:3px solid var(--ko);
+  border-radius:var(--r);padding:11px 12px;margin-top:10px;font-family:var(--mono);
+  font-size:.83rem;white-space:pre-wrap;word-break:break-word;color:var(--ink);overflow-x:auto}
+
+/* ---------- questions ---------- */
+.q{font-size:.93rem;margin-bottom:12px}
+.opts{display:flex;flex-direction:column;gap:8px}
+.opt{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);padding:11px 13px;
+  cursor:pointer;text-align:left;color:var(--ink);font-size:.88rem;min-height:var(--tap);
+  display:flex;align-items:center;gap:10px;width:100%}
+.opt:hover:not(:disabled){border-color:var(--line2);background:var(--panel2)}
+.opt:disabled{cursor:default}
+.opt .k{flex:none;width:1.5em;height:1.5em;line-height:1.5em;text-align:center;border-radius:3px;
+  background:var(--panel2);color:var(--mute);font-size:.74rem}
+.opt.right{border-color:var(--ok);background:rgba(61,220,132,.09)}
+.opt.right .k{background:var(--ok);color:#0f141b}
+.opt.wrong{border-color:var(--ko);background:rgba(255,95,86,.09);border-style:dashed}
+.opt.wrong .k{background:var(--ko);color:#0f141b}
+.answer{display:flex;gap:8px;align-items:stretch;flex-wrap:wrap}
+.answer input{flex:1;min-width:150px;background:var(--bg2);border:1px solid var(--line2);
+  border-radius:var(--r);color:var(--ink);font-family:var(--mono);font-size:16px;padding:0 12px;min-height:var(--tap)}
+.answer input:focus{border-color:var(--amber2);outline:none}
+.btn{background:var(--amber);color:#fff;border:none;border-radius:var(--r);min-height:var(--tap);
+  padding:0 17px;font-weight:700;cursor:pointer;font-size:.85rem}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.ghost{background:none;border:1px solid var(--line2);color:var(--dim);font-weight:400}
+.btn.ghost:hover:not(:disabled){border-color:var(--amber2);color:var(--amber2)}
+
+/* verdict : jamais la couleur seule, toujours un mot et un symbole */
+.verdict{margin-top:11px;font-size:.86rem;display:none}
+.verdict.show{display:block}
+.vline{display:flex;gap:8px;align-items:baseline;font-weight:700}
+.vline.good{color:var(--ok)} .vline.bad{color:var(--ko)}
+.vs{margin-top:9px;display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:.83rem}
+.vs .k{color:var(--mute);font-size:.72rem;letter-spacing:.5px;white-space:nowrap}
+.vs .v{word-break:break-word}
+.vs .v.bad{color:var(--ko)} .vs .v.good{color:var(--ok)}
+.why{margin-top:10px;color:var(--dim);font-size:.84rem;border-left:2px solid var(--line2);padding-left:11px}
+.hint{margin-top:9px;font-size:.83rem;color:var(--dim);border-left:2px solid var(--amber);padding:2px 0 2px 11px}
+.hint .n{color:var(--amber2);font-size:.72rem;letter-spacing:1px;display:block}
+.answerbox{background:var(--panel2);border:1px dashed var(--line2);border-radius:5px;padding:12px 13px;
+  margin-top:11px;font-size:.86rem}
+.answerbox .lab2{font-size:.71rem;color:var(--mute);letter-spacing:1px;margin-bottom:6px}
+
+/* ---------- widgets ---------- */
+.bwrow{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.bwg{text-align:center}
+.bwg .t{font-size:.7rem;color:var(--mute);margin-bottom:6px;letter-spacing:.5px}
+.bwb{display:flex;gap:4px;justify-content:center}
+.bit{flex:1;max-width:52px;min-width:0;height:var(--tap);border:1px solid var(--line2);border-radius:5px;
+  background:var(--bg2);color:var(--mute);font-size:1rem;font-weight:700;cursor:pointer}
+.bit[aria-pressed=true]{background:rgba(229,83,61,.18);border-color:var(--amber);color:var(--amber2)}
+.bwg .v{margin-top:7px;font-size:1.3rem;font-weight:700;color:var(--amber2)}
+.bwout{text-align:center;margin-top:12px;font-size:1rem;letter-spacing:1px;color:var(--dim)}
+.bwout b{color:var(--amber2);font-size:1.15rem}
+.schema svg{width:100%;height:auto;display:block}
+.schemactl{display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap}
+.schemamsg{text-align:center;font-size:.83rem;color:var(--dim);margin-top:9px;min-height:1.5em}
+.asciibox{text-align:center;padding:6px 0 2px}
+.asciibox .big{font-size:1.55rem;color:var(--amber2);font-weight:700}
+.asciibox .sub{font-size:.84rem;color:var(--dim);margin:8px 0 12px}
+.asciibox input[type=range]{width:100%;height:var(--tap);accent-color:var(--amber)}
+.asciirow{display:flex;gap:7px;justify-content:center;flex-wrap:wrap;margin-top:4px}
+.asciirow button{background:var(--bg2);border:1px solid var(--line2);color:var(--dim);border-radius:999px;
+  min-height:38px;padding:0 13px;font-size:.79rem;cursor:pointer}
+.asciirow button:hover{border-color:var(--amber2);color:var(--amber2)}
+
+/* ---------- fin de salle ---------- */
+.end{border:1px solid var(--amber);border-radius:var(--r);padding:18px 16px;text-align:center;margin-top:18px;
+  background:linear-gradient(180deg,rgba(229,83,61,.08),transparent)}
+.end .t{font-size:1rem;color:var(--amber2);font-weight:700}
+.end .s{font-size:.85rem;color:var(--dim);margin-top:6px}
+.end .row{display:flex;gap:9px;justify-content:center;margin-top:14px;flex-wrap:wrap}
+footer{margin-top:34px;font-size:.75rem;color:var(--mute);text-align:center;line-height:1.7}
+textarea.io{width:100%;min-height:80px;background:var(--bg2);border:1px solid var(--line2);
+  border-radius:5px;color:var(--ink);font-family:var(--mono);font-size:.76rem;padding:10px;resize:vertical}
+
+@media (min-width:620px){
+  .wrap{padding:0 20px 96px}
+  .rhead{margin:0 -20px;padding:12px 20px 10px}
+  .cell{max-width:34px;height:32px;line-height:32px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<main id="accueil">
+  <div class="brand">
+    <span class="u">student@campus</span>:~/c01.lab %
+    <h1>C 01</h1>
+  </div>
+
+  <div class="lsbox">
+    <div class="lshead">ls -l ~/c01.lab &nbsp;—&nbsp; chaque salle validée allume ses bits</div>
+    <div class="lsbody" id="lsbody"></div>
+    <div class="total" id="totalLigne"></div>
+  </div>
+
+  <div class="panneau" aria-live="polite">
+    <div class="bits" id="bitsModule" role="img"></div>
+    <span class="count" id="compteSalles"></span>
+  </div>
+
+  <div class="panneau accent">
+    <div>
+      <div class="t" id="srsT">Révision espacée</div>
+      <div class="s" id="srsS"></div>
+    </div>
+    <div class="actions"><button class="btn" id="srsBtn" type="button">réviser</button></div>
+  </div>
+
+  <div class="panneau">
+    <div>
+      <div class="t">Sauvegarde manuelle</div>
+      <div class="s">La progression vit dans ce navigateur. Pour la transporter, copie ce code et recolle-le ailleurs : il contient les salles, la file de révision et ce qui a été résolu avec aide.</div>
+    </div>
+    <div class="actions">
+      <button class="btn ghost" id="expBtn" type="button">copier mon code</button>
+      <button class="btn ghost" id="impBtn" type="button">restaurer</button>
+    </div>
+  </div>
+  <div id="ioZone" class="hidden" style="margin-top:10px">
+    <textarea id="ioTexte" class="io" spellcheck="false" aria-label="code de sauvegarde"></textarea>
+    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center">
+      <button class="btn" id="ioGo" type="button">appliquer</button>
+      <button class="btn ghost" id="ioFermer" type="button">fermer</button>
+      <span id="ioMsg" style="font-size:.79rem;color:var(--dim)"></span>
+    </div>
+  </div>
+</main>
+
+<section id="salle" class="hidden">
+  <header class="rhead" id="teteSalle"></header>
+  <div id="corpsSalle"></div>
+</section>
+
+<footer>
+  <a href="index.html">&larr; tous les modules</a><br><br>
+  L'interpréteur exécute réellement ton code. Ce n'est ni cc -Wall -Wextra -Werror, ni la norminette.
+</footer>
+</div>
+
+<script>
+/* ==========================================================================
+   Page générée par src/build.mjs. Ne pas éditer ici : les modifications
+   seraient écrasées à la construction suivante, et tests/test_sources.js
+   échouerait en constatant l'écart. Les sources sont dans src/.
+   ========================================================================== */
+
+/* --- 1. moteur --- */
+/* Interpréteur C : lexer, parseur récursif descendant, évaluateur sur une
+   mémoire plate. Extrait de c00.html lors de la bascule vers les sources. */
+
+/* ============================================================
+   Mini-C : lexer + parser + interpréteur, sous-ensemble du C
+   suffisant pour la Piscine (write, boucles, pointeurs, tableaux).
+   ============================================================ */
+
+/* ---------------- lexer ---------------- */
+const KW = new Set(['int','char','void','if','else','while','for','return','unsigned','long','short','const','break','continue']);
+function lex(src){
+  const t=[]; let i=0;
+  const push=(k,v)=>t.push({k,v,pos:i});
+  while(i<src.length){
+    const c=src[i];
+    if(c==='/'&&src[i+1]==='/'){ while(i<src.length&&src[i]!=='\n') i++; continue; }
+    if(c==='/'&&src[i+1]==='*'){ i+=2; while(i<src.length&&!(src[i]==='*'&&src[i+1]==='/')) i++; i+=2; continue; }
+    if(/\s/.test(c)){ i++; continue; }
+    if(/[0-9]/.test(c)){ let s=''; while(i<src.length&&/[0-9]/.test(src[i])) s+=src[i++];
+      t.push({k:'num',v:parseInt(s,10)}); continue; }
+    if(/[A-Za-z_]/.test(c)){ let s=''; while(i<src.length&&/[A-Za-z0-9_]/.test(src[i])) s+=src[i++];
+      t.push({k:KW.has(s)?s:'id',v:s}); continue; }
+    if(c==="'"){ i++; let v;
+      if(src[i]==='\\'){ i++; const e=src[i++]; v={n:10,t:9,r:13,'0':0,'\\':92,"'":39,'"':34}[e];
+        if(v===undefined) v=e.charCodeAt(0); }
+      else v=src.charCodeAt(i++);
+      if(src[i]!=="'") throw new Error("littéral caractère mal fermé");
+      i++; t.push({k:'num',v}); continue; }
+    if(c==='"'){ i++; let s='';
+      while(i<src.length&&src[i]!=='"'){
+        if(src[i]==='\\'){ i++; const e=src[i++];
+          s+= ({n:'\n',t:'\t',r:'\r','0':'\0','\\':'\\','"':'"'})[e] ?? e; }
+        else s+=src[i++]; }
+      if(src[i]!=='"') throw new Error('chaîne non fermée');
+      i++; t.push({k:'str',v:s}); continue; }
+    const three=src.substr(i,3), two=src.substr(i,2);
+    if(['<<=','>>='].includes(three)){ t.push({k:three}); i+=3; continue; }
+    if(['==','!=','<=','>=','&&','||','++','--','+=','-=','*=','/=','%='].includes(two)){
+      t.push({k:two}); i+=2; continue; }
+    if('+-*/%=<>!&|(){}[];,?:'.includes(c)){ t.push({k:c}); i++; continue; }
+    throw new Error('caractère inattendu : '+c);
+  }
+  t.push({k:'eof'});
+  return t;
+}
+
+/* ---------------- parser ---------------- */
+function parse(src){
+  const t=lex(src); let p=0;
+  const peek=(o=0)=>t[p+o];
+  const at=k=>t[p].k===k;
+  const eat=k=>{ if(t[p].k!==k) throw new Error("attendu '"+k+"' mais trouvé '"+(t[p].v??t[p].k)+"'"); return t[p++]; };
+  const isType=()=>['int','char','void','unsigned','long','short','const'].includes(t[p].k);
+
+  function type(){
+    let base='int';
+    while(isType()){ const k=eat(t[p].k).k; if(k==='int'||k==='char'||k==='void') base=k; }
+    let stars=0; while(at('*')){ eat('*'); stars++; }
+    return {base,stars};
+  }
+  function program(){
+    const fns={}, globals=[];
+    while(!at('eof')){
+      const ty=type();
+      const name=eat('id').v;
+      if(at('(')){
+        eat('('); const params=[];
+        if(at('void')&&peek(1).k===')') eat('void');
+        else if(!at(')')){
+          do{ const pt=type(); const pn=eat('id').v;
+              if(at('[')){ eat('['); if(!at(']')) expr(); eat(']'); pt.stars++; }
+              params.push({name:pn,type:pt}); } while(at(',')&&eat(','));
+        }
+        eat(')');
+        if(at(';')){ eat(';'); continue; }          // prototype
+        fns[name]={name,ret:ty,params,body:block()};
+      } else {
+        globals.push(...declTail(ty,name)); eat(';');
+      }
+    }
+    return {fns,globals};
+  }
+  function declTail(ty,name){
+    const out=[];
+    for(;;){
+      let size=null, init=null;
+      if(at('[')){ eat('['); size = at(']')?null:expr(); eat(']'); }
+      if(at('=')){ eat('=');
+        if(at('{')){ eat('{'); const items=[]; if(!at('}')) do{ items.push(expr()); } while(at(',')&&eat(',')); eat('}');
+          init={kind:'initlist',items}; }
+        else init=expr(); }
+      out.push({kind:'decl',type:ty,name,size,init});
+      if(at(',')){ eat(','); let s2=0; while(at('*')){eat('*');s2++;}
+        name=eat('id').v; ty={base:ty.base,stars:s2}; continue; }
+      break;
+    }
+    return out;
+  }
+  function block(){ eat('{'); const body=[]; while(!at('}')) body.push(stmt()); eat('}'); return {kind:'block',body}; }
+  function stmt(){
+    if(at('{')) return block();
+    if(at(';')){ eat(';'); return {kind:'empty'}; }
+    if(at('if')){ eat('if'); eat('('); const c=expr(); eat(')'); const a=stmt();
+      let b=null; if(at('else')){ eat('else'); b=stmt(); } return {kind:'if',c,a,b}; }
+    if(at('while')){ eat('while'); eat('('); const c=expr(); eat(')'); return {kind:'while',c,body:stmt()}; }
+    if(at('for')){ eat('for'); eat('(');
+      let init=null;
+      if(!at(';')){ if(isType()){ const ty=type(); const nm=eat('id').v; init={kind:'decls',body:declTail(ty,nm)}; }
+                    else init={kind:'expr',e:expr()}; }
+      eat(';');
+      const c = at(';')?null:expr(); eat(';');
+      const step = at(')')?null:expr(); eat(')');
+      return {kind:'for',init,c,step,body:stmt()}; }
+    if(at('return')){ eat('return'); const e= at(';')?null:expr(); eat(';'); return {kind:'return',e}; }
+    if(at('break')){ eat('break'); eat(';'); return {kind:'break'}; }
+    if(at('continue')){ eat('continue'); eat(';'); return {kind:'continue'}; }
+    if(isType()){ const ty=type(); const nm=eat('id').v; const d=declTail(ty,nm); eat(';');
+      return {kind:'decls',body:d}; }
+    const e=expr(); eat(';'); return {kind:'expr',e};
+  }
+
+  // expressions
+  function expr(){ return assign(); }
+  function assign(){
+    const left=ternary();
+    if(at('=')){ eat('='); return {kind:'assign',t:left,v:assign()}; }
+    for(const op of ['+=','-=','*=','/=','%=']){
+      if(at(op)){ eat(op); return {kind:'assign',t:left,v:{kind:'bin',op:op[0],l:left,r:assign()}}; }
+    }
+    return left;
+  }
+  function ternary(){
+    const c=logor();
+    if(at('?')){ eat('?'); const a=assign(); eat(':'); const b=assign(); return {kind:'ter',c,a,b}; }
+    return c;
+  }
+  function bin(next,ops){
+    return function(){ let l=next();
+      for(;;){ const op=ops.find(o=>at(o)); if(!op) return l; eat(op); l={kind:'bin',op,l,r:next()}; } };
+  }
+  const equality = bin(()=>rel(), ['==','!=']);
+  const logand   = bin(()=>equality(), ['&&']);
+  const logor    = bin(()=>logand(), ['||']);
+  function rel(){ let l=add();
+    for(;;){ const op=['<','>','<=','>='].find(o=>at(o)); if(!op) return l; eat(op); l={kind:'bin',op,l,r:add()}; } }
+  function add(){ let l=mul();
+    for(;;){ const op=['+','-'].find(o=>at(o)); if(!op) return l; eat(op); l={kind:'bin',op,l,r:mul()}; } }
+  function mul(){ let l=unary();
+    for(;;){ const op=['*','/','%'].find(o=>at(o)); if(!op) return l; eat(op); l={kind:'bin',op,l,r:unary()}; } }
+  function unary(){
+    if(at('-')){ eat('-'); return {kind:'neg',e:unary()}; }
+    if(at('+')){ eat('+'); return unary(); }
+    if(at('!')){ eat('!'); return {kind:'not',e:unary()}; }
+    if(at('*')){ eat('*'); return {kind:'deref',e:unary()}; }
+    if(at('&')){ eat('&'); return {kind:'addr',e:unary()}; }
+    if(at('++')||at('--')){ const op=t[p++].k; return {kind:'pre',op,e:unary()}; }
+    if(at('(')&&['int','char','void','unsigned','long','short'].includes(peek(1).k)){
+      eat('('); type(); eat(')'); return unary(); }   // cast ignoré
+    return postfix();
+  }
+  function postfix(){
+    let e=prim();
+    for(;;){
+      if(at('[')){ eat('['); const idx=expr(); eat(']'); e={kind:'index',a:e,i:idx}; continue; }
+      if(at('(')){ eat('('); const args=[]; if(!at(')')) do{ args.push(assign()); } while(at(',')&&eat(','));
+        eat(')'); e={kind:'call',name:e.name,args}; continue; }
+      if(at('++')||at('--')){ const op=t[p++].k; e={kind:'post',op,e}; continue; }
+      return e;
+    }
+  }
+  function prim(){
+    if(at('num')) return {kind:'num',v:eat('num').v};
+    if(at('str')) return {kind:'str',v:eat('str').v};
+    if(at('id'))  return {kind:'var',name:eat('id').v};
+    if(at('(')){ eat('('); const e=expr(); eat(')'); return e; }
+    throw new Error("expression inattendue près de '"+(t[p].v??t[p].k)+"'");
+  }
+  return program();
+}
+
+/* ---------------- interpréteur ---------------- */
+const MEMSIZE=8192;
+class Ret { constructor(v){ this.v=v; } }
+const BRK={brk:1}, CNT={cnt:1};
+
+function interpret(ast, entry, args, limit){
+  const mem=new Int32Array(MEMSIZE);
+  let hp=16;                                   // 0..15 réservés (NULL)
+  const alloc=n=>{ if(hp+n>=MEMSIZE) throw new Error('mémoire épuisée'); const a=hp; hp+=n; return a; };
+  let out='';
+  let steps=0; const MAX=limit||3000000;
+  const tick=()=>{ if(++steps>MAX) throw new Error('trop d\'opérations : boucle infinie ?'); };
+
+  const scopes=[new Map()];
+  const findVar=n=>{ for(let i=scopes.length-1;i>=0;i--) if(scopes[i].has(n)) return scopes[i].get(n);
+    throw new Error("variable inconnue : '"+n+"'"); };
+
+  function declare(d){
+    if(d.size!==null&&d.size!==undefined){
+      const n=ev(d.size);
+      const base=alloc(n);
+      const slot=alloc(1); mem[slot]=base;
+      scopes[scopes.length-1].set(d.name,{addr:slot,arr:true});
+      if(d.init&&d.init.kind==='initlist') d.init.items.forEach((it,i)=>{ mem[base+i]=ev(it); });
+      return;
+    }
+    const slot=alloc(1);
+    scopes[scopes.length-1].set(d.name,{addr:slot});
+    if(d.init){
+      if(d.init.kind==='initlist'){
+        const base=alloc(d.init.items.length); mem[slot]=base;
+        d.init.items.forEach((it,i)=>{ mem[base+i]=ev(it); });
+      } else mem[slot]=ev(d.init);
+    } else mem[slot]=0;
+  }
+  function lval(e){
+    if(e.kind==='var'){ const v=findVar(e.name); return v.addr; }
+    if(e.kind==='deref'){ const a=ev(e.e);
+      if(a<=0) throw new Error('écriture via un pointeur nul'); return a; }
+    if(e.kind==='index'){ const a=ev(e.a)+ev(e.i);
+      if(a<=0) throw new Error('accès hors mémoire (index invalide)'); return a; }
+    throw new Error('cible d\'affectation invalide');
+  }
+  function ev(e){
+    tick();
+    switch(e.kind){
+      case 'num': return e.v|0;
+      case 'str': { const b=alloc(e.v.length+1);
+        for(let i=0;i<e.v.length;i++) mem[b+i]=e.v.charCodeAt(i);
+        mem[b+e.v.length]=0; return b; }
+      case 'var': { const v=findVar(e.name); return mem[v.addr]|0; }
+      case 'index': return mem[ev(e.a)+ev(e.i)]|0;
+      case 'deref': { const a=ev(e.e); if(a<=0) throw new Error('déréférencement d\'un pointeur nul'); return mem[a]|0; }
+      case 'addr': return lval(e.e);
+      case 'neg': return (-ev(e.e))|0;
+      case 'not': return ev(e.e)?0:1;
+      case 'ter': return ev(e.c)?ev(e.a):ev(e.b);
+      case 'assign': { const a=lval(e.t); const v=ev(e.v)|0; mem[a]=v; return v; }
+      case 'pre': { const a=lval(e.e); mem[a]=(mem[a]+(e.op==='++'?1:-1))|0; return mem[a]|0; }
+      case 'post': { const a=lval(e.e); const old=mem[a]|0; mem[a]=(old+(e.op==='++'?1:-1))|0; return old; }
+      case 'bin': {
+        if(e.op==='&&') return ev(e.l)? (ev(e.r)?1:0) : 0;
+        if(e.op==='||') return ev(e.l)?1:(ev(e.r)?1:0);
+        const l=ev(e.l), r=ev(e.r);
+        switch(e.op){
+          case '+': return (l+r)|0; case '-': return (l-r)|0; case '*': return Math.imul(l,r);
+          case '/': if(r===0) throw new Error('division par zéro'); return (l/r)|0;
+          case '%': if(r===0) throw new Error('modulo par zéro'); return (l%r)|0;
+          case '<': return l<r?1:0; case '>': return l>r?1:0;
+          case '<=': return l<=r?1:0; case '>=': return l>=r?1:0;
+          case '==': return l===r?1:0; case '!=': return l!==r?1:0;
+        }
+        throw new Error('opérateur inconnu '+e.op);
+      }
+      case 'call': return call(e.name, e.args.map(ev));
+    }
+    throw new Error('expression non supportée');
+  }
+  function call(name,vals){
+    tick();
+    if(name==='write'){
+      const [fd,ptr,len]=vals;
+      let s=''; for(let i=0;i<len;i++) s+=String.fromCharCode(mem[ptr+i]&255);
+      out+=s; return len;
+    }
+    if(name==='__putnbr'){ out+=String(vals[0]|0); return 0; }
+    if(name==='__putstr'){ let a=vals[0]; while(mem[a]!==0){ out+=String.fromCharCode(mem[a]&255); a++; } return 0; }
+    if(name==='__putchar'){ out+=String.fromCharCode(vals[0]&255); return 0; }
+    const fn=ast.fns[name];
+    if(!fn) throw new Error("fonction inconnue : '"+name+"'");
+    if(fn.params.length!==vals.length)
+      throw new Error(name+' attend '+fn.params.length+' argument(s), '+vals.length+' fourni(s)');
+    const sc=new Map();
+    /* Portée lexicale, comme en C. Pendant l'exécution d'une fonction, seules
+       sa propre portée et la portée globale sont visibles.
+       Sans cette mise de côté, scopes restait la pile de l'appelant : une
+       fonction pouvait lire les variables locales de qui l'appelait, et un
+       oubli de paramètre passait sans bruit ici alors que le compilateur le
+       refuse. Un code qui marche dans le lab et casse à la compilation est
+       pire qu'une fonctionnalité absente. */
+    const pileAppelant=scopes.splice(1);
+    const restaure=()=>{ scopes.length=1; for(const s of pileAppelant) scopes.push(s); };
+    scopes.push(sc);
+    fn.params.forEach((pa,i)=>{ const a=alloc(1); mem[a]=vals[i]|0; sc.set(pa.name,{addr:a}); });
+    let r=0;
+    try{ run(fn.body); }
+    catch(x){ if(x instanceof Ret) r=x.v|0; else { restaure(); throw x; } }
+    restaure();
+    return r;
+  }
+  function run(s){
+    tick();
+    switch(s.kind){
+      case 'block': { scopes.push(new Map()); try{ for(const st of s.body) run(st); } finally{ scopes.pop(); } return; }
+      case 'decls': { for(const d of s.body) declare(d); return; }
+      case 'decl': return declare(s);
+      case 'expr': ev(s.e); return;
+      case 'empty': return;
+      case 'if': if(ev(s.c)) run(s.a); else if(s.b) run(s.b); return;
+      case 'while': while(ev(s.c)){ try{ run(s.body); }catch(x){ if(x===BRK) break; if(x!==CNT) throw x; } } return;
+      case 'for': {
+        scopes.push(new Map());
+        try{
+          if(s.init) run(s.init);
+          while(s.c===null||ev(s.c)){
+            try{ run(s.body); }catch(x){ if(x===BRK) break; if(x!==CNT) throw x; }
+            if(s.step) ev(s.step);
+          }
+        } finally{ scopes.pop(); }
+        return; }
+      case 'return': throw new Ret(s.e?ev(s.e):0);
+      case 'break': throw BRK;
+      case 'continue': throw CNT;
+    }
+    throw new Error('instruction non supportée');
+  }
+
+  for(const g of ast.globals) declare(g);
+  let ret=0;
+  try{ ret=call(entry, args||[]); }
+  catch(x){ if(x instanceof Ret) ret=x.v; else throw x; }
+  return {out, ret, mem};
+}
+
+/* ---------------- API ---------------- */
+function runC(userSrc, harnessSrc, opts){
+  opts=opts||{};
+  try{
+    const ast=parse(userSrc+'\n'+(harnessSrc||''));
+    const r=interpret(ast, opts.entry||'main', opts.args, opts.limit);
+    return {ok:true, out:r.out, ret:r.ret};
+  }catch(e){
+    return {ok:false, err:String(e.message||e)};
+  }
+}
+
+/* --- 2. widgets --- */
+/* Les objets manipulables. Chacun sert à faire sentir un mécanisme avant de
+   l'expliquer : on bouge quelque chose, on voit la conséquence.
+   Ils ne comptent pas comme tâches ; c'est la question de prédiction qui les
+   précède qui compte. */
+
+const SVGNS = 'http://www.w3.org/2000/svg';
+function svgEl(nom, attrs){
+  const e = document.createElementNS(SVGNS, nom);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  return e;
+}
+function svgTexte(x, y, txt, taille, couleur, ancre){
+  const t = svgEl('text', {x, y, 'text-anchor':ancre||'middle',
+    'font-family':'ui-monospace,monospace', 'font-size':taille||11, fill:couleur||'#8f9cad'});
+  t.textContent = txt;
+  return t;
+}
+function boutonSchema(zone, libelle, action, redessine){
+  const b=document.createElement('button'); b.className='btn ghost'; b.type='button'; b.textContent=libelle;
+  b.onclick=()=>{ action(); redessine(); };
+  zone.appendChild(b);
+  return b;
+}
+
+/* ---------- les bits de permission ---------- */
+function widgetBits(){
+  const w=document.createElement('div');
+  const etat=[[1,1,0],[1,0,0],[1,0,0]];
+  const noms=['propriétaire','groupe','autres'];
+  const rangee=document.createElement('div'); rangee.className='bwrow';
+  const sortie=document.createElement('div'); sortie.className='bwout';
+  const valeurs=[];
+  noms.forEach((nom,g)=>{
+    const col=document.createElement('div'); col.className='bwg';
+    col.innerHTML='<div class="t">'+nom+'</div>';
+    const trio=document.createElement('div'); trio.className='bwb';
+    ['r','w','x'].forEach((L,b)=>{
+      const btn=document.createElement('button'); btn.className='bit'; btn.type='button'; btn.textContent=L;
+      btn.setAttribute('aria-label',L+' pour '+nom);
+      btn.onclick=()=>{ etat[g][b]=etat[g][b]?0:1; maj(); };
+      trio.appendChild(btn);
+    });
+    const v=document.createElement('div'); v.className='v'; valeurs.push(v);
+    col.appendChild(trio); col.appendChild(v); rangee.appendChild(col);
+  });
+  function maj(){
+    let lettres='', oct='';
+    noms.forEach((_,g)=>{
+      const [r,wr,x]=etat[g];
+      const n=r*4+wr*2+x;
+      valeurs[g].textContent=n; oct+=n;
+      lettres+=(r?'r':'-')+(wr?'w':'-')+(x?'x':'-');
+      const trio=rangee.children[g].querySelector('.bwb');
+      [r,wr,x].forEach((on,b)=>trio.children[b].setAttribute('aria-pressed',on?'true':'false'));
+    });
+    sortie.innerHTML='-'+lettres+' &nbsp;=&nbsp; chmod <b>'+oct+'</b>';
+  }
+  w.appendChild(rangee); w.appendChild(sortie); maj();
+  return w;
+}
+
+/* ---------- lien dur contre lien symbolique ---------- */
+function widgetInode(){
+  const w=document.createElement('div'); w.className='schema';
+  const svg=svgEl('svg',{viewBox:'0 0 660 210'}); w.appendChild(svg);
+  const msg=document.createElement('div'); msg.className='schemamsg';
+  const ctl=document.createElement('div'); ctl.className='schemactl';
+  let vivant={durA:true, durB:true, cibleSym:true, sym:true};
+
+  function boite(x,y,l,h,titre,sous,actif,tirets){
+    const g=svgEl('g');
+    const r=svgEl('rect',{x,y,width:l,height:h,rx:5,
+      fill:actif?'#26303c':'#1a212a', stroke:actif?'#e5533d':'#2f3a47'});
+    if(tirets) r.setAttribute('stroke-dasharray','5 4');
+    g.appendChild(r);
+    g.appendChild(svgTexte(x+l/2, y+h/2+(sous?-4:5), titre, 13, actif?'#ff7d68':'#7a8697'));
+    if(sous) g.appendChild(svgTexte(x+l/2, y+h/2+14, sous, 10, actif?'#8f9cad':'#3e4b5a'));
+    svg.appendChild(g);
+  }
+  function fleche(x1,y1,x2,y2,actif,tirets){
+    const l=svgEl('line',{x1,y1,x2,y2, stroke:actif?'#e5533d':'#2f3a47','stroke-width':1.5});
+    if(tirets) l.setAttribute('stroke-dasharray','4 4');
+    svg.appendChild(l);
+    svg.appendChild(svgEl('circle',{cx:x2,cy:y2,r:3.5, fill:actif?'#e5533d':'#2f3a47'}));
+  }
+  function dessine(){
+    svg.innerHTML='';
+    svg.appendChild(svgTexte(165,16,'LIEN DUR   ln a b',11,'#8f9cad'));
+    svg.appendChild(svgTexte(495,16,'LIEN SYMBOLIQUE   ln -s a b',11,'#8f9cad'));
+    boite(20,38,110,38,'nom : a', vivant.durA?'':'supprimé', vivant.durA);
+    boite(20,103,110,38,'nom : b', vivant.durB?'':'supprimé', vivant.durB);
+    const inodeVivant = vivant.durA||vivant.durB;
+    boite(190,68,130,48,'inode #4211', inodeVivant?'contenu vivant':'contenu détruit', inodeVivant);
+    if(vivant.durA) fleche(130,57,190,84,true);
+    if(vivant.durB) fleche(130,122,190,100,true);
+    boite(350,38,110,38,'nom : a', vivant.cibleSym?'':'supprimé', vivant.cibleSym);
+    boite(350,103,130,38,'lien : b', vivant.sym?'contient « a »':'', vivant.sym);
+    boite(540,68,100,48,'inode #7702', vivant.cibleSym?'contenu':'détruit', vivant.cibleSym);
+    if(vivant.cibleSym) fleche(460,57,540,84,true);
+    if(vivant.sym) fleche(480,122,540,100,vivant.cibleSym,true);
+    if(vivant.sym && !vivant.cibleSym)
+      svg.appendChild(svgTexte(510,160,'lien mort',11,'#ff5f56'));
+    svg.setAttribute('aria-label','à gauche, deux noms vers un même inode'+
+      (vivant.durA?'':' dont un supprimé')+' ; à droite, un lien symbolique'+
+      (vivant.cibleSym?'':' devenu mort'));
+  }
+  svg.setAttribute('role','img');
+  boutonSchema(ctl,'rm a  (côté dur)',()=>{ vivant.durA=false;
+    msg.innerHTML = vivant.durB
+      ? 'Le nom <b>a</b> disparaît, mais <b>b</b> pointe toujours sur l\'inode : le contenu vit. Le compteur de liens passe de 2 à 1.'
+      : 'Plus aucun nom : le contenu est détruit.'; }, dessine);
+  boutonSchema(ctl,'rm a  (côté symbolique)',()=>{ vivant.cibleSym=false;
+    msg.innerHTML='Le lien <b>b</b> existe encore et pèse toujours autant, mais son texte « a » ne mène plus nulle part : <b>lien mort</b>.'; }, dessine);
+  boutonSchema(ctl,'remettre à zéro',()=>{ vivant={durA:true,durB:true,cibleSym:true,sym:true}; msg.textContent=''; }, dessine);
+  dessine();
+  w.appendChild(ctl); w.appendChild(msg);
+  return w;
+}
+
+/* ---------- un caractère est un nombre ---------- */
+function widgetAscii(){
+  const w=document.createElement('div');
+  const boite=document.createElement('div'); boite.className='asciibox';
+  const gros=document.createElement('div'); gros.className='big';
+  const sous=document.createElement('div'); sous.className='sub';
+  const curseur=document.createElement('input');
+  curseur.type='range'; curseur.min='32'; curseur.max='126'; curseur.value='97';
+  curseur.setAttribute('aria-label','code du caractère');
+  const rangee=document.createElement('div'); rangee.className='asciirow';
+  function maj(){
+    const n=+curseur.value, ch=String.fromCharCode(n);
+    gros.textContent="'"+ch+"'  =  "+n;
+    const ecart=n-97;
+    sous.innerHTML="en C, <code>'"+ch+"'</code> <b>est</b> le nombre "+n+
+      ". Donc <code>'a' "+(ecart<0?'- '+(-ecart):'+ '+ecart)+"</code> vaut "+n+
+      ", c'est-à-dire <code>'"+ch+"'</code>.";
+    curseur.setAttribute('aria-valuetext',ch+', code '+n);
+  }
+  [["'a'",97],["'z'",122],["'A'",65],["'0'",48],["'9'",57],['espace',32]].forEach(([lib,v])=>{
+    const b=document.createElement('button'); b.type='button'; b.textContent=lib;
+    b.onclick=()=>{ curseur.value=v; maj(); }; rangee.appendChild(b);
+  });
+  curseur.oninput=maj;
+  boite.appendChild(gros); boite.appendChild(sous); boite.appendChild(curseur);
+  w.appendChild(boite); w.appendChild(rangee); maj();
+  return w;
+}
+
+/* ---------- variable, pointeur, pointeur de pointeur ---------- */
+function widgetMemoire(){
+  const w=document.createElement('div'); w.className='schema';
+  const svg=svgEl('svg',{viewBox:'0 0 640 180', role:'img'}); w.appendChild(svg);
+  const msg=document.createElement('div'); msg.className='schemamsg';
+  const ctl=document.createElement('div'); ctl.className='schemactl';
+  let x=5;
+  function boite(bx,by,bl,bh,titre,valeur){
+    const g=svgEl('g');
+    g.appendChild(svgEl('rect',{x:bx,y:by,width:bl,height:bh,rx:5,fill:'#26303c',stroke:'#e5533d'}));
+    g.appendChild(svgTexte(bx+bl/2, by+19, titre, 11, '#8f9cad'));
+    g.appendChild(svgTexte(bx+bl/2, by+42, valeur, 15, '#ff7d68'));
+    svg.appendChild(g);
+  }
+  function fleche(x1,y1,x2,y2){
+    svg.appendChild(svgEl('line',{x1,y1,x2,y2,stroke:'#e5533d','stroke-width':1.5}));
+    svg.appendChild(svgEl('circle',{cx:x2,cy:y2,r:3.5,fill:'#e5533d'}));
+  }
+  function dessine(){
+    svg.innerHTML='';
+    svg.appendChild(svgTexte(320,16,'une seule case contient la valeur ; les autres contiennent une adresse',11));
+    boite(30,40,160,58,'int x   (adresse 1000)', String(x));
+    boite(240,40,150,58,'int *p', '1000');
+    boite(440,40,170,58,'int **q', 'adresse de p');
+    fleche(240,69,192,69);
+    fleche(440,69,392,69);
+    svg.appendChild(svgTexte(216,112,'*p',11,'#8f9cad'));
+    svg.appendChild(svgTexte(416,112,'*q',11,'#8f9cad'));
+    svg.appendChild(svgTexte(320,148,'*p vaut '+x+'   ·   **q vaut '+x, 12, '#8f9cad'));
+    svg.setAttribute('aria-label','x vaut '+x+' ; p contient l\'adresse de x ; q contient l\'adresse de p');
+  }
+  boutonSchema(ctl,'x = 9',()=>{ x=9;
+    msg.innerHTML='On écrit dans la variable directement. <b>*p</b> et <b>**q</b> changent aussi : ils désignent la même case.'; }, dessine);
+  boutonSchema(ctl,'*p = 42',()=>{ x=42;
+    msg.innerHTML='On écrit <b>à travers</b> le pointeur. Résultat identique : p contient l\'adresse de x, donc *p EST x.'; }, dessine);
+  boutonSchema(ctl,'**q = 7',()=>{ x=7;
+    msg.innerHTML='Deux sauts : q donne p, p donne x. Chaque étoile suit une flèche de plus.'; }, dessine);
+  boutonSchema(ctl,'remettre à zéro',()=>{ x=5; msg.textContent=''; }, dessine);
+  dessine();
+  w.appendChild(ctl); w.appendChild(msg);
+  return w;
+}
+
+/* --- 3. contenu du module --- */
+/* Contenu pédagogique du module c01.
+   Les salles et les questions d'auto-évaluation, rien d'autre : ni moteur,
+   ni rendu, ni style. */
+
+const MODULE={cle:'c01lab_v1', titre:"c01.lab — pointeurs", invite:"~/c01.lab"};
+
+const ROOMS=[
+{
+id:'p1', file:'adresses', tag:'concept', title:'Adresse et déréférencement',
+sub:'& donne l\'adresse, * suit la flèche.',
+steps:[
+ {k:'lesson',h:'Deux opérateurs, deux sens',b:`
+  <p>Une variable occupe une case en mémoire. Cette case a une <b>adresse</b>.</p>
+  <p><code>&amp;x</code> donne l'adresse de x. Un <b>pointeur</b> est une variable qui contient une adresse : <code>int *p = &amp;x;</code>.</p>
+  <p><code>*p</code> fait l'inverse : il va voir <b>ce qu'il y a à cette adresse</b>. Et c'est utilisable des deux côtés du signe égal. En lecture, <code>int v = *p;</code> récupère la valeur. En écriture, <code>*p = 42;</code> modifie x, alors qu'on n'a jamais écrit le nom x.</p>
+  <p>C'est tout l'intérêt : une fonction qui reçoit une adresse peut modifier une variable qui vit ailleurs. Sans ça, une fonction C ne peut rien changer chez son appelant, puisque les arguments sont copiés.</p>`},
+ {k:'mem',h:'Suis les flèches',
+  b:"Trois cases : une valeur, un pointeur vers elle, un pointeur vers le pointeur. Clique sur les opérations et observe : elles modifient toutes la même case."},
+ {k:'code',h:'',
+  brief:"Écris <code>ft_mettre</code>, qui range la valeur <code>v</code> dans l'entier pointé par <code>p</code>. Le but est de constater que la modification se voit chez l'appelant.",
+  sig:'void ft_mettre(int *p, int v);',
+  start:'void\tft_mettre(int *p, int v)\n{\n\t\n}\n',
+  tests:[{label:'x devient 7', harness:'int main(void){ int x=0; ft_mettre(&x,7); __putnbr(x); return 0; }', expect:'7'},
+         {label:'x devient -3', harness:'int main(void){ int x=100; ft_mettre(&x,-3); __putnbr(x); return 0; }', expect:'-3'},
+         {label:'deux variables distinctes', harness:'int main(void){ int a=1,b=2; ft_mettre(&a,9); ft_mettre(&b,8); __putnbr(a); __putnbr(b); return 0; }', expect:'98'}],
+  hints:["Tu ne dois pas modifier p, mais ce vers quoi il pointe.",
+         "L'étoile devant p, à gauche du signe égal, désigne la case visée.",
+         "Une seule ligne suffit."]},
+ {k:'mcq',h:'',q:"Une fonction reçoit <code>int n</code> et fait <code>n = 42;</code>. Que vaut la variable de l'appelant après ?",
+  opts:["42","Sa valeur d'origine, inchangée","Zéro","Ça ne compile pas"],a:1,
+  why:"Les arguments sont copiés. La fonction modifie sa copie locale. Pour toucher l'original il faut recevoir son adresse : c'est toute la raison d'être des pointeurs ici."},
+ {k:'mcq',h:'',q:"<code>*p = 5;</code> modifie quoi ?",
+  opts:["Le pointeur p lui-même","La case mémoire dont p contient l'adresse","Une copie temporaire","Rien tant qu'on ne fait pas de return"],a:1,
+  why:"L'étoile suit la flèche puis écrit à l'arrivée. Écrire p = 5 au lieu de *p = 5 changerait l'adresse stockée, ce qui est une tout autre opération, et généralement une catastrophe."}
+]},
+
+{
+id:'p2', file:'multi', tag:'concept', title:'Pointeurs de pointeurs',
+sub:'Chaque étoile est un saut de plus.',
+steps:[
+ {k:'lesson',h:'Compter les sauts',b:`
+  <p>Un pointeur est une variable comme une autre : elle a donc elle aussi une adresse. On peut donc pointer dessus, et recommencer autant de fois qu'on veut.</p>
+  <p>La règle est mécanique : <b>le nombre d'étoiles dans le type dit combien de sauts séparent la variable de la valeur finale</b>.</p>
+  <ul>
+   <li><code>int *p</code> : un saut. <code>*p</code> est la valeur.</li>
+   <li><code>int **q</code> : deux sauts. <code>**q</code> est la valeur, <code>*q</code> est encore un pointeur.</li>
+   <li><code>int *********n</code> : neuf sauts, même principe, rien de plus difficile.</li>
+  </ul>
+  <p>Un exercice qui empile les étoiles n'est pas plus dur, il vérifie juste que tu as compris qu'il n'y a pas de cas particulier.</p>`},
+ {k:'code',h:'',
+  brief:"Écris <code>ft_triple</code>, qui met la valeur 7 dans l'entier situé au bout de trois niveaux de pointeurs.",
+  sig:'void ft_triple(int ***n);',
+  start:'void\tft_triple(int ***n)\n{\n\t\n}\n',
+  tests:[{label:'la valeur finale devient 7',
+    harness:'int main(void){ int x=0; int *a=&x; int **b=&a; int ***c=&b; ft_triple(c); __putnbr(x); return 0; }', expect:'7'},
+   {label:'on n\'a pas cassé les pointeurs intermédiaires',
+    harness:'int main(void){ int x=1; int *a=&x; int **b=&a; int ***c=&b; ft_triple(c); __putnbr(**b); __putnbr(*a); return 0; }', expect:'77'}],
+  hints:["Compte les étoiles du type : il en faut autant pour arriver à l'entier.",
+         "Trois niveaux dans le type, donc trois étoiles devant n dans l'affectation.",
+         "***n = 7;"]},
+ {k:'input',h:'',q:"Avec <code>int *****p</code>, combien d'étoiles faut-il écrire pour atteindre l'entier final ? (juste le nombre)",
+  a:['5'],why:"Autant que dans le type. Il n'y a aucune subtilité : la déclaration te donne directement le compte."},
+ {k:'mcq',h:'',q:"Avec <code>int **q</code>, que désigne <code>*q</code> ?",
+  opts:["L'entier final","Un pointeur vers l'entier","L'adresse de q","Rien de valide"],a:1,
+  why:"Une étoile sur deux : il reste un saut à faire. C'est en enlevant les étoiles une par une qu'on suit le chemin."}
+]},
+
+{
+id:'p3', file:'sorties', tag:'concept', title:'Renvoyer plusieurs résultats',
+sub:'Une fonction ne renvoie qu\'une valeur. Les pointeurs contournent la limite.',
+steps:[
+ {k:'lesson',h:'Le paramètre de sortie',b:`
+  <p><code>return</code> ne rend qu'<b>une seule</b> valeur. Quand une fonction doit produire deux résultats, on lui passe des adresses où déposer chacun d'eux. On appelle ça des paramètres de sortie.</p>
+  <p>Le motif est toujours le même : la fonction est <code>void</code>, elle reçoit des pointeurs, et elle écrit à travers eux.</p>
+  <p>Un piège classique quand les deux valeurs se calculent à partir des mêmes données : si tu écris dans la première avant d'avoir lu la seconde, tu calcules la suite avec une valeur déjà modifiée. La parade est de <b>lire les entrées dans des variables locales avant d'écrire quoi que ce soit</b>.</p>`},
+ {k:'code',h:'',
+  brief:"Écris <code>ft_min_max</code>, qui range le plus petit des deux nombres dans <code>min</code> et le plus grand dans <code>max</code>. Si les deux sont égaux, les deux reçoivent la même valeur.",
+  sig:'void ft_min_max(int a, int b, int *min, int *max);',
+  start:'void\tft_min_max(int a, int b, int *min, int *max)\n{\n\t\n}\n',
+  tests:[{label:'ft_min_max(3, 9, ...)', harness:'int main(void){ int m,M; ft_min_max(3,9,&m,&M); __putnbr(m); __putnbr(M); return 0; }', expect:'39'},
+   {label:'ft_min_max(9, 3, ...)', harness:'int main(void){ int m,M; ft_min_max(9,3,&m,&M); __putnbr(m); __putnbr(M); return 0; }', expect:'39'},
+   {label:'valeurs égales', harness:'int main(void){ int m,M; ft_min_max(5,5,&m,&M); __putnbr(m); __putnbr(M); return 0; }', expect:'55'},
+   {label:'négatifs', harness:'int main(void){ int m,M; ft_min_max(-7,-2,&m,&M); __putnbr(m); __putnbr(M); return 0; }', expect:'-7-2'}],
+  hints:["Un if pour comparer a et b, et deux écritures à travers les pointeurs.",
+         "N'oublie pas l'étoile devant min et max quand tu écris dedans.",
+         "Le cas des valeurs égales est couvert automatiquement si ta condition utilise < ou >."]},
+ {k:'code',h:'',
+  brief:"Écris <code>ft_echange_somme</code>, qui remplace la valeur pointée par <code>a</code> par la somme des deux, et celle pointée par <code>b</code> par leur différence (a moins b, calculée avec les valeurs <b>d'origine</b>).",
+  sig:'void ft_echange_somme(int *a, int *b);',
+  start:'void\tft_echange_somme(int *a, int *b)\n{\n\t\n}\n',
+  tests:[{label:'a=10, b=4 → 14 et 6', harness:'int main(void){ int a=10,b=4; ft_echange_somme(&a,&b); __putnbr(a); __putnbr(b); return 0; }', expect:'146'},
+   {label:'a=1, b=1 → 2 et 0', harness:'int main(void){ int a=1,b=1; ft_echange_somme(&a,&b); __putnbr(a); __putnbr(b); return 0; }', expect:'20'},
+   {label:'a=0, b=5 → 5 et -5', harness:'int main(void){ int a=0,b=5; ft_echange_somme(&a,&b); __putnbr(a); __putnbr(b); return 0; }', expect:'5-5'}],
+  hints:["Si tu écris dans *a en premier, la valeur d'origine de a est perdue pour le calcul suivant.",
+         "Copie les deux valeurs dans des variables locales avant d'écrire.",
+         "int x = *a; int y = *b; puis *a = x + y; *b = x - y;"],
+  post:"C'est exactement le piège de l'échange de deux variables : sans copie temporaire, la première écriture détruit ce dont la seconde a besoin."},
+ {k:'mcq',h:'',q:"Pourquoi une fonction d'échange a-t-elle besoin d'une variable temporaire ?",
+  opts:["Pour la lisibilité uniquement",
+        "Parce que la première affectation écrase une valeur dont la seconde a encore besoin",
+        "Parce que C interdit deux affectations de suite","Elle n'en a pas besoin"],a:1,
+  why:"Dès qu'on écrit dans la première case, l'ancienne valeur disparaît. Il faut l'avoir mise de côté avant."}
+]},
+
+{
+id:'p4', file:'chaines', tag:'concept', title:'Chaînes et zéro final',
+sub:'Une chaîne est une adresse, et sa fin est un octet nul.',
+steps:[
+ {k:'lesson',h:'Où s\'arrête une chaîne ?',b:`
+  <p>En C, une chaîne n'est pas un type : c'est un <code>char *</code>, c'est-à-dire <b>l'adresse du premier caractère</b>. Rien ne dit sa longueur.</p>
+  <p>La fin est marquée par un octet valant <b>zéro</b>, écrit <code>'\\0'</code>. Il est ajouté automatiquement aux chaînes littérales, et il n'est pas compté dans la longueur.</p>
+  <p>Parcourir une chaîne, c'est donc avancer tant que le caractère courant n'est pas nul. Et comme zéro est faux en C, <code>while (str[i])</code> suffit : c'est la même chose que <code>while (str[i] != 0)</code>, en plus court.</p>
+  <p><code>str[i]</code> et <code>*(str + i)</code> sont deux écritures du même accès. La première est plus lisible, la seconde montre ce qui se passe vraiment.</p>`},
+ {k:'code',h:'',
+  brief:"Écris <code>ft_compte</code>, qui renvoie le nombre de fois que le caractère <code>c</code> apparaît dans la chaîne. Zéro si la chaîne est vide.",
+  sig:'int ft_compte(char *str, char c);',
+  start:'int\tft_compte(char *str, char c)\n{\n\t\n}\n',
+  tests:[{label:'compter les a de "banana"', harness:"int main(void){ __putnbr(ft_compte(\"banana\",'a')); return 0; }", expect:'3'},
+   {label:'caractère absent', harness:"int main(void){ __putnbr(ft_compte(\"banana\",'z')); return 0; }", expect:'0'},
+   {label:'chaîne vide', harness:"int main(void){ __putnbr(ft_compte(\"\",'a')); return 0; }", expect:'0'},
+   {label:'tous identiques', harness:"int main(void){ __putnbr(ft_compte(\"aaaa\",'a')); return 0; }", expect:'4'}],
+  hints:["Il te faut un indice qui avance, et un compteur qui n'avance que si le caractère correspond.",
+         "La boucle s'arrête sur le zéro final : while (str[i]) suffit.",
+         "N'oublie pas de renvoyer le compteur à la fin."]},
+ {k:'mcq',h:'',q:"La chaîne <code>\"abc\"</code> occupe combien d'octets en mémoire ?",
+  opts:['3','4','5','ça dépend'],a:1,
+  why:"Trois caractères plus l'octet nul de fin. Ce zéro n'est pas compté dans la longueur, mais il occupe bien une place, et l'oublier fait déborder toutes les boucles."},
+ {k:'mcq',h:'',q:"Que se passe-t-il si le zéro final est absent de la mémoire ?",
+  opts:["La boucle s'arrête quand même","La boucle continue au-delà et lit n'importe quoi",
+        "Le compilateur refuse","La chaîne est vide"],a:1,
+  why:"Rien n'indique la fin. La boucle poursuit dans la mémoire voisine jusqu'à tomber sur un zéro par hasard, ou jusqu'au plantage. C'est la source d'erreur numéro un sur les chaînes."}
+]},
+
+{
+id:'p5', file:'tableaux', tag:'concept', title:'Tableaux et indices croisés',
+sub:'Modifier sur place, et faire se rencontrer deux indices.',
+steps:[
+ {k:'lesson',h:'Un tableau se passe par son adresse',b:`
+  <p>Un tableau d'entiers se transmet par l'adresse de sa première case, plus sa taille : la fonction ne peut pas la deviner, il n'y a pas de zéro final ici.</p>
+  <p>Comme la fonction reçoit une adresse, elle travaille sur <b>le tableau d'origine</b>. Toute modification est donc visible chez l'appelant : c'est du travail « sur place ».</p>
+  <p>Le motif à retenir pour inverser ou vérifier une symétrie, c'est <b>deux indices qui se rapprochent</b> : un qui part du début, un de la fin, et on avance jusqu'à ce qu'ils se croisent. Le nombre d'échanges est donc <code>taille / 2</code>, et faire toute la longueur remettrait le tableau dans son état initial.</p>`},
+ {k:'code',h:'',
+  brief:"Écris <code>ft_doubler</code>, qui multiplie par deux chaque élément du tableau, sur place.",
+  sig:'void ft_doubler(int *tab, int size);',
+  start:'void\tft_doubler(int *tab, int size)\n{\n\t\n}\n',
+  tests:[{label:'{1,2,3}', harness:'int main(void){ int t[3]={1,2,3}; ft_doubler(t,3); int i=0; while(i<3){ __putnbr(t[i]); i++; } return 0; }', expect:'246'},
+   {label:'négatifs et zéro', harness:'int main(void){ int t[3]={-2,0,5}; ft_doubler(t,3); int i=0; while(i<3){ __putnbr(t[i]); i++; } return 0; }', expect:'-4010'},
+   {label:'taille 1', harness:'int main(void){ int t[1]={7}; ft_doubler(t,1); __putnbr(t[0]); return 0; }', expect:'14'}],
+  hints:["Une boucle de 0 à size - 1, et une écriture dans tab[i].",
+         "tab[i] = tab[i] * 2;",
+         "Attention à la condition d'arrêt : i < size, pas i <= size."]},
+ {k:'code',h:'',
+  brief:"Écris <code>ft_symetrique</code>, qui renvoie 1 si le tableau se lit pareil dans les deux sens, et 0 sinon.",
+  sig:'int ft_symetrique(int *tab, int size);',
+  start:'int\tft_symetrique(int *tab, int size)\n{\n\t\n}\n',
+  tests:[{label:'{1,2,1} → 1', harness:'int main(void){ int t[3]={1,2,1}; __putnbr(ft_symetrique(t,3)); return 0; }', expect:'1'},
+   {label:'{1,2,3} → 0', harness:'int main(void){ int t[3]={1,2,3}; __putnbr(ft_symetrique(t,3)); return 0; }', expect:'0'},
+   {label:'{4,7,7,4} → 1', harness:'int main(void){ int t[4]={4,7,7,4}; __putnbr(ft_symetrique(t,4)); return 0; }', expect:'1'},
+   {label:'{4,7,8,4} → 0', harness:'int main(void){ int t[4]={4,7,8,4}; __putnbr(ft_symetrique(t,4)); return 0; }', expect:'0'},
+   {label:'un seul élément → 1', harness:'int main(void){ int t[1]={9}; __putnbr(ft_symetrique(t,1)); return 0; }', expect:'1'}],
+  hints:["Deux indices : un à 0, un à size - 1, qui se rapprochent.",
+         "Dès qu'une paire diffère, tu peux renvoyer 0 immédiatement.",
+         "Si la boucle se termine sans différence, renvoie 1. L'élément du milieu, en taille impaire, n'a pas besoin d'être comparé."],
+  post:"C'est exactement le squelette d'une inversion de tableau : mêmes deux indices, mêmes size / 2 tours. Seule l'action au centre change."},
+ {k:'mcq',h:'',q:"Pourquoi une inversion de tableau ne boucle-t-elle que jusqu'à <code>size / 2</code> ?",
+  opts:["Par optimisation, ça marcherait quand même",
+        "Parce qu'aller jusqu'au bout échangerait une deuxième fois chaque paire et remettrait tout en place",
+        "Parce que la deuxième moitié n'existe pas","C'est arbitraire"],a:1,
+  why:"Chaque tour traite une paire. Continuer au-delà du milieu refait les mêmes échanges à l'envers : le tableau revient à son état de départ."}
+]},
+
+{
+id:'p6', file:'autoeval', tag:'boss', title:'Auto-évaluation', boss:true,
+sub:'Huit questions de concept, à voix haute, sans lire.',
+steps:[
+ {k:'lesson',h:'Règle du jeu',b:`
+  <p>Les pointeurs sont le sujet où l'on peut le plus facilement faire tourner du code sans rien comprendre. Ces questions vérifient l'inverse.</p>
+  <p>Réponds <b>à voix haute et en entier</b> avant de révéler.</p>`},
+ {k:'viva'}
+]}
+];
+
+const VIVA=[
+ {q:"Pourquoi une fonction a-t-elle besoin d'un pointeur pour modifier une variable de l'appelant ?",
+  a:"Parce que les arguments sont copiés à l'appel : la fonction travaille sur sa propre copie, et la modifier ne change rien chez l'appelant. En recevant l'adresse, elle peut aller écrire directement dans la case d'origine."},
+ {q:"Quelle est la différence entre p = 5 et *p = 5 ?",
+  a:"La première change le pointeur lui-même : il se met à désigner l'adresse 5, ce qui n'a aucun sens et fera planter la suite. La seconde suit le pointeur et écrit 5 dans la case visée. L'étoile fait la différence entre changer la flèche et changer la cible."},
+ {q:"Avec int **q, que valent *q et **q ?",
+  a:"*q est encore un pointeur, il reste un saut à faire. **q est l'entier final. Le nombre d'étoiles du type dit combien de sauts séparent la variable de la valeur, et on les enlève une par une pour suivre le chemin."},
+ {q:"Comment fait-on pour qu'une fonction produise deux résultats ?",
+  a:"On lui passe deux adresses où déposer les résultats, et elle écrit à travers ces pointeurs. Elle reste void, puisque return ne peut rendre qu'une seule valeur. On appelle ça des paramètres de sortie."},
+ {q:"Pourquoi un échange de deux valeurs a-t-il besoin d'une variable temporaire ?",
+  a:"Parce que la première affectation écrase une valeur dont la seconde a encore besoin. Il faut mettre l'ancienne valeur de côté avant d'écrire, sinon on se retrouve avec deux fois la même."},
+ {q:"Comment sait-on où s'arrête une chaîne de caractères ?",
+  a:"Un octet nul est placé après le dernier caractère. Rien d'autre n'indique la longueur, puisqu'une chaîne n'est que l'adresse de son premier caractère. On parcourt donc tant que le caractère courant n'est pas nul, ce qui s'écrit simplement while sur le caractère puisque zéro est faux."},
+ {q:"La chaîne \"abc\" occupe combien d'octets, et pourquoi cette question compte ?",
+  a:"Quatre : les trois caractères plus l'octet nul. Il n'est pas compté dans la longueur mais il occupe une place réelle. L'oublier fait déborder les boucles et écraser la mémoire voisine."},
+ {q:"Pourquoi une inversion de tableau ne boucle-t-elle que jusqu'à la moitié ?",
+  a:"Parce que chaque tour traite une paire, une case du début avec une case de la fin. Aller au-delà du milieu referait les mêmes échanges en sens inverse et remettrait le tableau dans son état de départ. En taille impaire, l'élément central reste en place, ce qui est correct."}
+];
+
+/* ==========================================================================
+   3. ÉTAT + PERSISTANCE
+   ========================================================================== */
+
+/* --- 4. application --- */
+/* Couche applicative du lab : état, progression, révision espacée, rendu.
+
+   Écrite une seule fois pour les quatre modules. Elle attend que la page lui
+   fournisse `MODULE`, `ROOMS` et `VIVA`, plus le moteur correspondant :
+   le simulateur shell (newShell, run, lookup…) ou l'interpréteur C (runC).
+   Elle détecte lequel est présent et n'active que les étapes qui vont avec.
+
+   Ce qui a disparu par rapport à la version précédente : les xp et le compteur
+   de jours consécutifs. Un total de points qui ne sert qu'à payer des indices
+   ressemble à un score sans en être un, et une série entretenue pour la série
+   n'apprend rien. Ce qui reste est ce qui veut dire quelque chose : les salles
+   validées, les bits de permission qui s'allument, et la file de révision. */
+
+const MODE_SHELL = typeof newShell === 'function';
+const MODE_C = typeof runC === 'function';
+
+/* ==========================================================================
+   1. ÉTAT ET PERSISTANCE
+   ========================================================================== */
+const KEY = MODULE.cle;
+let S = { rooms:{}, srs:{}, aide:{}, last:null, viva:{} };
+
+const store = {
+  async get(){
+    try{ if(window.storage){ const r=await window.storage.get(KEY); return r&&r.value?JSON.parse(r.value):null; } }catch(e){}
+    try{ const v=window.localStorage&&localStorage.getItem(KEY); return v?JSON.parse(v):null; }catch(e){}
+    return null;
+  },
+  async set(v){
+    const s=JSON.stringify(v);
+    try{ if(window.storage){ await window.storage.set(KEY,s); return; } }catch(e){}
+    try{ if(window.localStorage) localStorage.setItem(KEY,s); }catch(e){}
+  }
+};
+const aujourdhui = () => new Date().toISOString().slice(0,10);
+const save = () => store.set(S);
+
+/* --- révision espacée : boîtes de Leitner --- */
+const BOITES = [0,1,3,7,16];
+/* `avecAide` n'est pas cosmétique : une tâche résolue avec un indice retombe
+   en boîte 0, donc elle revient dès demain, même si la réponse était juste.
+   C'est ce qui remplace le coût en points. Un marquage qui n'agirait sur rien
+   serait exactement le faux signal qu'on a voulu supprimer. */
+function srsAdd(id, juste, avecAide){
+  const e = S.srs[id] || {box:0};
+  e.box = (juste && !avecAide) ? Math.min(4, e.box+1) : 0;
+  const d = new Date(); d.setDate(d.getDate() + BOITES[e.box]);
+  e.due = d.toISOString().slice(0,10);
+  if(avecAide) S.aide[id] = true; else delete S.aide[id];
+  S.srs[id] = e; save();
+}
+function srsDues(){
+  const t = aujourdhui();
+  return Object.keys(S.srs).filter(k => !S.srs[k].due || S.srs[k].due <= t);
+}
+/* Les questions rejouables en révision : QCM, saisies, et les questions orales.
+   Les orales n'y entraient pas, alors que la note vient d'une soutenance :
+   ce qu'on n'a pas su dire ne revenait jamais. C'était l'inversion la plus
+   coûteuse du lab. */
+function questionsRejouables(){
+  const out = [];
+  ROOMS.forEach(r => r.steps.forEach((s,i) => {
+    if(['mcq','input','answer','predict','bug','term','code'].includes(s.k))
+      out.push({ id: r.id+'.'+i, room: r, step: s });
+  }));
+  return out;
+}
+
+/* ==========================================================================
+   2. OUTILS DE RENDU
+   ========================================================================== */
+const $ = s => document.querySelector(s);
+const echappe = x => String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const etiquette = txt => { const d=document.createElement('div'); d.className='lab'; d.textContent=txt; return d; };
+const elVerdict = () => { const d=document.createElement('div'); d.className='verdict'; return d; };
+
+/* `ton` vaut 'note' pour une question, 'devine' pour une prédiction. Se
+   tromper en devinant avant l'explication est le mécanisme même, pas un
+   échec : « raté » y serait un contresens et découragerait de tenter. */
+function poseVerdict(el, ok, attendu, obtenu, why, ton){
+  el.classList.add('show');
+  const mot = ton==='devine'
+    ? (ok ? '✓ bien vu' : '→ pas tout à fait, et c\'est sans importance')
+    : (ok ? '✓ juste' : '✗ raté');
+  let h = '<div class="vline '+(ok?'good':'bad')+'" role="status">'+mot+'</div>';
+  if(!ok && attendu!==undefined)
+    h += '<div class="vs"><span class="k">ATTENDU</span><span class="v good">'+echappe(attendu)+'</span>'+
+         '<span class="k">OBTENU</span><span class="v bad">'+(obtenu?echappe(obtenu):'<i>rien</i>')+'</span></div>';
+  if(why) h += '<div class="why">'+why+'</div>';
+  el.innerHTML = h;
+}
+
+function nTaches(r){
+  return r.steps.filter(s => !['lesson','bits','inode','ascii','mem'].includes(s.k)).length || 1;
+}
+function etatSalle(r){ return S.rooms[r.id] || {done:0, cleared:false}; }
+function premiereNonFaite(){
+  for(let i=0;i<ROOMS.length;i++) if(!etatSalle(ROOMS[i]).cleared) return i;
+  return ROOMS.length;
+}
+function bitsDe(fraction){
+  const n = Math.round(Math.min(1,fraction)*9);
+  let s='';
+  for(let i=0;i<9;i++) s += i<n ? 'rwxrwxrwx'[i] : '-';
+  return s;
+}
+
+/* ==========================================================================
+   3. ACCUEIL DU MODULE
+   ========================================================================== */
+const vueAccueil = $('#accueil'), vueSalle = $('#salle');
+const teteSalle = $('#teteSalle'), corpsSalle = $('#corpsSalle');
+
+function peindreAccueil(){
+  const finies = ROOMS.filter(r => etatSalle(r).cleared).length;
+  $('#compteSalles').textContent = finies + ' / ' + ROOMS.length + ' salles';
+  const barre = $('#bitsModule');
+  barre.innerHTML='';
+  bitsDe(finies/ROOMS.length).split('').forEach(c => {
+    const s=document.createElement('span'); s.textContent=c;
+    if(c!=='-') s.className='on'; barre.appendChild(s);
+  });
+  barre.setAttribute('aria-label', finies+' salles validées sur '+ROOMS.length);
+
+  const corps = $('#lsbody'); corps.innerHTML='';
+  const courante = premiereNonFaite();
+  /* Sur un écran de téléphone, dix lignes dont neuf inertes remplissent tout
+     l'espace sans rien apprendre. On montre ce qui est ouvert, plus la salle
+     suivante pour savoir où l'on va, et on replie le reste derrière un bouton.
+     Rien n'est caché définitivement : le repli est un pli, pas une porte. */
+  const limite = Math.min(ROOMS.length, courante + 2);
+  const ligne = (r,i) => {
+    const st = etatSalle(r), ouverte = i <= courante;
+    const b = document.createElement('button');
+    b.className = 'lsrow' + (st.cleared?' done':(st.done?' part':''));
+    b.disabled = !ouverte;
+    b.innerHTML =
+      '<span class="mode">'+ (st.cleared ? '-rwxrwxrwx' : '-'+bitsDe(st.done/nTaches(r))) +'</span>'+
+      '<span class="nm"><b>'+r.file+'</b><span>'+r.title+'</span></span>'+
+      '<span class="badge">'+(st.cleared ? '✓' : ouverte ? (st.done ? st.done+'/'+nTaches(r) : r.tag) : '🔒')+'</span>';
+    if(!ouverte) b.setAttribute('aria-label', r.file+' : verrouillée, termine la salle précédente');
+    b.onclick = () => ouvrirSalle(i);
+    return b;
+  };
+  ROOMS.slice(0, limite).forEach((r,i) => corps.appendChild(ligne(r,i)));
+  const reste = ROOMS.length - limite;
+  if(reste > 0){
+    const plus = document.createElement('button');
+    plus.className = 'voirplus'; plus.type = 'button';
+    plus.setAttribute('aria-expanded','false');
+    plus.textContent = 'voir les ' + reste + ' salle' + (reste>1?'s':'') + ' suivante' + (reste>1?'s':'');
+    plus.onclick = () => {
+      plus.remove();
+      ROOMS.slice(limite).forEach((r,k) => corps.appendChild(ligne(r, limite+k)));
+    };
+    corps.appendChild(plus);
+  }
+  $('#totalLigne').textContent = 'total '+ROOMS.length+' salles — ' +
+    (finies===ROOMS.length ? 'chmod 777 : tout est allumé.' : 'les suivantes s\'ouvrent au fur et à mesure.');
+
+  const dues = srsDues().length, connues = Object.keys(S.srs).length;
+  const avecAide = Object.keys(S.aide).length;
+  $('#srsT').textContent = dues ? dues+' question'+(dues>1?'s':'')+' à revoir aujourd\'hui'
+                                : 'Rien à revoir pour le moment';
+  $('#srsS').textContent = connues
+    ? connues+' questions en mémoire' + (avecAide ? ', dont '+avecAide+' résolue'+(avecAide>1?'s':'')+' avec aide qui revien'+(avecAide>1?'nent':'t')+' plus vite' : '')
+      + '. Les ratées reviennent demain, les acquises s\'espacent (1, 3, 7, 16 jours).'
+    : 'Réponds aux questions des salles : elles entrent dans la file de révision.';
+  $('#srsBtn').disabled = dues === 0;
+}
+
+/* ==========================================================================
+   4. OUVERTURE ET PROGRESSION D'UNE SALLE
+   ========================================================================== */
+let COURANTE = null;
+
+function ouvrirSalle(idx){
+  const r = ROOMS[idx];
+  COURANTE = { r, idx, faites:0, total:nTaches(r), aides:0 };
+  vueAccueil.classList.add('hidden'); vueSalle.classList.remove('hidden');
+  window.scrollTo(0,0);
+  teteSalle.innerHTML =
+    '<div class="l1"><button class="back" id="retour" aria-label="Retour à la liste des salles">&larr; ls ..</button>'+
+    '<h1>'+r.title+'</h1></div>'+
+    '<div class="l2"><div class="bits" id="bitsSalle" role="img"></div>'+
+    '<span class="count" id="compteSalle"></span></div>';
+  $('#retour').onclick = retourAccueil;
+  corpsSalle.innerHTML = '';
+  r.steps.forEach((s,i) => { const el = construireEtape(r,s,i); if(el) corpsSalle.appendChild(el); });
+  peindreTeteSalle();
+}
+function peindreTeteSalle(){
+  const b = $('#bitsSalle'); if(!b) return;
+  b.innerHTML='';
+  bitsDe(COURANTE.faites/COURANTE.total).split('').forEach(c => {
+    const s=document.createElement('span'); s.textContent=c; if(c!=='-') s.className='on'; b.appendChild(s);
+  });
+  b.setAttribute('aria-label','progression : '+COURANTE.faites+' tâches sur '+COURANTE.total);
+  $('#compteSalle').textContent = COURANTE.faites+' / '+COURANTE.total +
+    (COURANTE.aides ? ' · '+COURANTE.aides+' avec aide' : '');
+}
+function tacheFinie(avecAide){
+  COURANTE.faites++;
+  if(avecAide) COURANTE.aides++;
+  peindreTeteSalle();
+  if(COURANTE.r.id === '__revision'){
+    if(COURANTE.faites >= COURANTE.total) corpsSalle.appendChild(finRevision());
+    return;
+  }
+  const st = S.rooms[COURANTE.r.id] || {done:0, cleared:false};
+  st.done = Math.max(st.done, COURANTE.faites);
+  if(COURANTE.faites >= COURANTE.total) st.cleared = true;
+  S.rooms[COURANTE.r.id] = st;
+  save();
+  if(COURANTE.faites >= COURANTE.total) corpsSalle.appendChild(finSalle());
+}
+function finSalle(){
+  const d = document.createElement('div'); d.className='end';
+  const suivante = COURANTE.idx+1 < ROOMS.length ? ROOMS[COURANTE.idx+1] : null;
+  d.innerHTML = '<div class="t">salle validée — '+COURANTE.r.file+'</div>'+
+    '<div class="s">'+(COURANTE.aides
+      ? COURANTE.aides+' tâche'+(COURANTE.aides>1?'s':'')+' avec aide : '+
+        (COURANTE.aides>1?'elles retournent':'elle retourne')+' en boîte 0, donc '+
+        (COURANTE.aides>1?'elles reviennent':'elle revient')+' dès la prochaine révision.'
+      : 'Sans aucun indice. Ces questions reviendront plus tard, quand tu risqueras de les avoir oubliées.')+
+    '</div><div class="s" style="margin-top:8px">Tu sais la faire. Saurais-tu l\'expliquer sans écran ?</div>'+
+    '<div class="row"></div>';
+  const row = d.querySelector('.row');
+  const refaire = document.createElement('button');
+  refaire.className='btn ghost'; refaire.textContent='refaire';
+  refaire.onclick = () => ouvrirSalle(COURANTE.idx);
+  row.appendChild(refaire);
+  const suite = document.createElement('button'); suite.className='btn';
+  if(suivante){ suite.textContent='suivante : '+suivante.file; suite.onclick=()=>ouvrirSalle(COURANTE.idx+1); }
+  else { suite.textContent='retour au menu'; suite.onclick=retourAccueil; }
+  row.appendChild(suite);
+  peindreAccueil();
+  setTimeout(()=>d.scrollIntoView({behavior:'smooth',block:'center'}),60);
+  return d;
+}
+function finRevision(){
+  const d=document.createElement('div'); d.className='end';
+  d.innerHTML='<div class="t">révision terminée</div>'+
+    '<div class="s">Les ratées reviennent demain, les autres s\'espacent.</div><div class="row"></div>';
+  const b=document.createElement('button'); b.className='btn'; b.textContent='retour au menu';
+  b.onclick=retourAccueil; d.querySelector('.row').appendChild(b);
+  peindreAccueil();
+  setTimeout(()=>d.scrollIntoView({behavior:'smooth',block:'center'}),60);
+  return d;
+}
+function retourAccueil(){
+  vueSalle.classList.add('hidden'); vueAccueil.classList.remove('hidden');
+  peindreAccueil(); window.scrollTo(0,0);
+}
+
+/* ==========================================================================
+   5. CONSTRUCTION DES ÉTAPES
+   ========================================================================== */
+function construireEtape(r, s, i){
+  const id = r.id+'.'+i;
+  switch(s.k){
+    case 'lesson':  return blocLecon(s);
+    case 'predict': return blocChoix(s, id, 'DEVINE, PUIS VÉRIFIE', 'devine');
+    case 'mcq':     return blocChoix(s, id, 'QUESTION', 'note');
+    case 'bug':     return blocDiagnostic(s, id);
+    case 'input':   return blocSaisie(s, id);
+    case 'answer':  return blocOral(s, id);
+    case 'term':    return MODE_SHELL ? blocMission(s, id) : null;
+    case 'code':    return MODE_C ? blocCode(s, id) : null;
+    case 'bits':    return MODE_SHELL ? blocWidget(s, widgetBits) : null;
+    case 'inode':   return MODE_SHELL ? blocWidget(s, widgetInode) : null;
+    case 'ascii':   return MODE_C ? blocWidget(s, widgetAscii) : null;
+    case 'mem':     return MODE_C ? blocWidget(s, widgetMemoire) : null;
+    case 'viva':    return blocViva();
+    default:        return null;
+  }
+}
+
+function blocLecon(s){
+  const w=document.createElement('div'); w.className='step';
+  const n=document.createElement('div'); n.className='notion';
+  n.appendChild(etiquette('NOTION'));
+  n.insertAdjacentHTML('beforeend','<h2>'+s.h+'</h2>'+s.b);
+  w.appendChild(n); return w;
+}
+function blocWidget(s, fabrique){
+  const w=document.createElement('div'); w.className='step';
+  const c=document.createElement('div'); c.className='box';
+  c.appendChild(etiquette('À MANIPULER'));
+  c.insertAdjacentHTML('beforeend','<h2>'+s.h+'</h2><p>'+s.b+'</p>');
+  c.appendChild(fabrique());
+  w.appendChild(c); return w;
+}
+
+function blocChoix(s, id, titre, ton){
+  const w=document.createElement('div'); w.className='step';
+  const c=document.createElement('div'); c.className='box';
+  c.appendChild(etiquette(titre));
+  c.insertAdjacentHTML('beforeend','<div class="q">'+s.q+'</div>');
+  const o=document.createElement('div'); o.className='opts'; o.setAttribute('role','group');
+  const v=elVerdict();
+  s.opts.forEach((t,oi)=>{
+    const b=document.createElement('button'); b.className='opt'; b.type='button';
+    b.innerHTML='<span class="k" aria-hidden="true">'+'ABCDEF'[oi]+'</span><span>'+t+'</span>';
+    b.onclick=()=>{
+      o.querySelectorAll('.opt').forEach(x=>x.disabled=true);
+      const ok = oi===s.a;
+      b.classList.add(ok?'right':'wrong');
+      if(!ok) o.children[s.a].classList.add('right');
+      poseVerdict(v, ok, undefined, undefined, s.why, ton);
+      // Une réponse fausse n'est pas « avec aide » : seul un indice demandé
+      // compte comme de l'aide. Se tromper fait partie du travail.
+      srsAdd(id, ok, false);
+      tacheFinie(false);
+    };
+    o.appendChild(b);
+  });
+  c.appendChild(o); c.appendChild(v); w.appendChild(c); return w;
+}
+
+/* « Trouve l'erreur » : on montre un travail plausible mais faux et on demande
+   le diagnostic. C'est la compétence que la soutenance exige réellement, dans
+   les deux sens : défendre son propre code, et corriger celui d'un camarade.
+   Les erreurs viennent de celles que la suite de tests attrape déjà, donc de
+   fautes réellement commises et non inventées pour l'exercice. */
+function blocDiagnostic(s, id){
+  const w=document.createElement('div'); w.className='step';
+  const c=document.createElement('div'); c.className='box';
+  c.appendChild(etiquette("TROUVE L'ERREUR"));
+  c.insertAdjacentHTML('beforeend',
+    '<div class="q">'+s.contexte+'</div>'+
+    '<pre class="faute" aria-label="le travail à diagnostiquer">'+echappe(s.code)+'</pre>'+
+    '<div class="q" style="margin-top:12px">'+s.q+'</div>');
+  const o=document.createElement('div'); o.className='opts'; o.setAttribute('role','group');
+  const v=elVerdict();
+  s.opts.forEach((t,oi)=>{
+    const b=document.createElement('button'); b.className='opt'; b.type='button';
+    b.innerHTML='<span class="k" aria-hidden="true">'+'ABCDEF'[oi]+'</span><span>'+t+'</span>';
+    b.onclick=()=>{
+      o.querySelectorAll('.opt').forEach(x=>x.disabled=true);
+      const ok=oi===s.a;
+      b.classList.add(ok?'right':'wrong');
+      if(!ok) o.children[s.a].classList.add('right');
+      poseVerdict(v, ok, undefined, undefined, s.why, 'note');
+      srsAdd(id, ok, false);
+      tacheFinie(false);
+    };
+    o.appendChild(b);
+  });
+  c.appendChild(o); c.appendChild(v); w.appendChild(c); return w;
+}
+
+function blocSaisie(s, id){
+  const w=document.createElement('div'); w.className='step';
+  const c=document.createElement('div'); c.className='box';
+  c.appendChild(etiquette('QUESTION'));
+  c.insertAdjacentHTML('beforeend','<div class="q">'+s.q+'</div>');
+  const row=document.createElement('div'); row.className='answer';
+  const inp=document.createElement('input');
+  inp.spellcheck=false; inp.autocomplete='off'; inp.autocapitalize='off';
+  inp.setAttribute('aria-label','ta réponse');
+  const go=document.createElement('button'); go.className='btn'; go.type='button'; go.textContent='valider';
+  const v=elVerdict();
+  const valider=()=>{
+    if(go.disabled) return;
+    const val=inp.value.trim().replace(/\s+/g,' ');
+    go.disabled=true; inp.disabled=true;
+    const ok = s.accept ? s.accept(val) : s.a.some(x=>x.toLowerCase()===val.toLowerCase());
+    poseVerdict(v, ok, s.a[0], val, s.why, 'note');
+    srsAdd(id, ok, false);
+    tacheFinie(false);
+  };
+  go.onclick=valider;
+  inp.addEventListener('keydown',e=>{ if(e.key==='Enter') valider(); });
+  row.appendChild(inp); row.appendChild(go);
+  c.appendChild(row); c.appendChild(v); w.appendChild(c); return w;
+}
+
+/* Question orale. Elle entre désormais dans la file de révision : la note
+   vient d'une soutenance, et ce qu'on n'a pas su dire doit revenir. */
+function blocOral(s, id){
+  const w=document.createElement('div'); w.className='step';
+  const c=document.createElement('div'); c.className='box';
+  c.appendChild(etiquette((s.h||'À DIRE À VOIX HAUTE').toUpperCase()));
+  c.insertAdjacentHTML('beforeend','<div class="q">'+s.q+'</div>');
+  const btn=document.createElement('button'); btn.className='btn ghost'; btn.type='button';
+  btn.textContent='j\'ai répondu, montrer le modèle';
+  const boite=document.createElement('div'); boite.className='answerbox hidden';
+  boite.innerHTML='<div class="lab2">RÉPONSE MODÈLE</div>'+s.a;
+  const row=document.createElement('div');
+  row.style.cssText='display:flex;gap:8px;margin-top:10px;flex-wrap:wrap';
+  btn.onclick=()=>{
+    boite.classList.remove('hidden'); btn.classList.add('hidden');
+    const oui=document.createElement('button'); oui.className='btn'; oui.type='button'; oui.textContent='je l\'ai dit';
+    const non=document.createElement('button'); non.className='btn ghost'; non.type='button'; non.textContent='pas encore';
+    oui.onclick=()=>{ row.innerHTML='<span style="color:var(--ok);font-size:.83rem">✓ acquis</span>';
+      srsAdd(id,true,false); tacheFinie(false); };
+    non.onclick=()=>{ row.innerHTML='<span style="color:var(--amber2);font-size:.83rem">à retravailler, ça repasse aujourd\'hui</span>';
+      srsAdd(id,false,false); tacheFinie(false); };
+    row.appendChild(oui); row.appendChild(non);
+  };
+  c.appendChild(btn); c.appendChild(boite); c.appendChild(row);
+  w.appendChild(c); return w;
+}
+
+/* ==========================================================================
+   6. PANNEAUX « ATTENDU CONTRE OBTENU »
+   ==========================================================================
+   Chaque type de mission a son propre attendu : un mode de permissions, un
+   contenu de fichier, une sortie de commande, ou une liste de conditions.
+   Le panneau montre la CIBLE dès le départ, parce qu'elle est déjà dans
+   l'énoncé, mais ne compare qu'après la première commande : sinon on peut
+   tâtonner en regardant l'écart et arriver au résultat sans jamais faire le
+   raisonnement, qui est toute la leçon. */
+
+function modeLettres(m){
+  let s='';
+  for(let g=2;g>=0;g--){ const v=(m>>(g*3))&7;
+    s += (v&4?'r':'-')+(v&2?'w':'-')+(v&1?'x':'-'); }
+  return s;
+}
+const octalDe = m => [0,1,2].map(g=>(m>>((2-g)*3))&7).join('');
+const ATTENTE = '<p class="attente">La comparaison s\'affichera après ta première commande. '+
+                'Fais le raisonnement d\'abord.</p>';
+const montre = t => t==='' ? '<span class="vide">(vide)</span>' : echappe(t);
+
+function panneauPermissions(v, sh, aTente){
+  const n = lookup(sh, v.cible);
+  const veut = modeLettres(v.mode), a = n ? modeLettres(n.mode) : '---------';
+  const ok = !!n && n.mode === v.mode;
+  let h = '<div class="mgrid" role="img" aria-label="cible '+veut+', soit '+octalDe(v.mode)+
+          ' en octal'+(aTente?' ; actuellement '+a+', soit '+(n?octalDe(n.mode):'inconnu'):'')+'">';
+  h += '<span class="rl">CIBLE</span>';
+  for(let g=0;g<3;g++){ h+='<span class="grp">';
+    for(let i=0;i<3;i++) h+='<span class="cell want">'+veut[g*3+i]+'</span>';
+    h+='</span>'; }
+  h += '<span class="oct want">'+octalDe(v.mode)+'</span>';
+  if(aTente){
+    h += '<span class="rl">ACTUEL</span>';
+    for(let g=0;g<3;g++){ h+='<span class="grp">';
+      for(let i=0;i<3;i++){ const k=g*3+i;
+        h+='<span class="cell '+(a[k]===veut[k]?'hit':'miss')+'">'+a[k]+'</span>'; }
+      h+='</span>'; }
+    h += '<span class="oct now'+(ok?' hit':'')+'">'+(n?octalDe(n.mode):'???')+'</span>';
+  }
+  h += '</div>' + (aTente?'':ATTENTE);
+  const ecarts = [...a].filter((c,i)=>c!==veut[i]).length;
+  return { html:h, ok, resume: aTente ? (ok?'conforme':'écart sur '+ecarts+' position(s)') : 'en attente' };
+}
+
+function panneauTexte(v, obtenu, aTente, libelle){
+  const ok = obtenu === v.attendu;
+  let h = '<div class="txtcmp"><span class="k">'+libelle+'</span>'+
+          '<pre class="want">'+montre(v.attendu)+'</pre>';
+  if(aTente) h += '<span class="k">OBTENU</span><pre class="'+(ok?'hit':'miss')+'">'+montre(obtenu)+'</pre>';
+  h += '</div>' + (aTente?'':ATTENTE);
+  return { html:h, ok, resume: aTente ? (ok?'conforme':'différent') : 'en attente' };
+}
+
+function panneauCriteres(v, sh, hist, aTente){
+  const res = v.criteres.map(c => ({ label:c.label, interdit:!!c.interdit, ok:!!c.test(sh,hist) }));
+  const remplis = res.filter(c => c.interdit ? !c.ok : c.ok).length;
+  const h = '<ul class="crit">' + res.map(c => {
+    // Un critère « interdit » est rempli tant qu'il n'est PAS déclenché :
+    // c'est ainsi qu'on vérifie qu'une clé privée n'a jamais été affichée.
+    const bon = c.interdit ? !c.ok : c.ok;
+    const classe = !aTente ? 'todo' : (bon ? 'done' : (c.interdit ? 'rate' : 'todo'));
+    const marque = !aTente ? '·' : (bon ? '✓' : (c.interdit ? '✗' : '·'));
+    return '<li class="'+classe+'"><span class="m" aria-hidden="true">'+marque+'</span><span>'+c.label+'</span></li>';
+  }).join('') + '</ul>' + (aTente?'':ATTENTE);
+  return { html:h, ok: remplis===res.length,
+           resume: aTente ? remplis+' / '+res.length : 'en attente' };
+}
+
+/* ==========================================================================
+   7. MISSION DANS LE TERMINAL
+   ========================================================================== */
+function blocMission(s, id){
+  const w=document.createElement('div'); w.className='step';
+  const c=document.createElement('div'); c.className='box mission';
+  c.appendChild(etiquette('MISSION'));
+  c.insertAdjacentHTML('beforeend',
+    '<div class="goal">'+(s.goalHtml || s.goal)+'</div><div class="brief">'+s.brief+'</div>');
+
+  const sh = newShell(s.setup);
+  const hist = [];
+  let resolu=false, iIndice=0, aTente=false;
+
+  const diff=document.createElement('div'); diff.className='diff';
+  const dh=document.createElement('div'); dh.className='dh';
+  dh.innerHTML='<span>ATTENDU CONTRE OBTENU</span><span class="etat">—</span>';
+  const db=document.createElement('div'); db.className='db';
+  diff.appendChild(dh); diff.appendChild(db);
+
+  function rafraichir(){
+    /* Repli : une mission sans descripteur `verif` retombe sur un critère
+       unique adossé à son `check`. Ça reste un vrai retour, pas un booléen
+       muet, et ça permet d'écrire les descripteurs module par module sans
+       casser ceux qui n'en ont pas encore. */
+    const v = s.verif || { type:'criteres',
+      criteres:[{ label: s.goal || 'objectif atteint', test:(sh,h)=>!!s.check(sh,h) }] };
+    let p;
+    if(v.type==='permissions') p = panneauPermissions(v, sh, aTente);
+    else if(v.type==='contenu'){
+      const n = lookup(sh, v.fichier);
+      p = panneauTexte(v, n && n.type==='file' ? n.content : '', aTente, 'CONTENU ATTENDU');
+    }
+    else if(v.type==='sortie'){
+      const derniere = [...hist].reverse().find(h => v.filtre ? v.filtre.test(h) : true);
+      let obtenu='';
+      if(derniere){ const r = run(newShellFrom(sh), derniere); obtenu = r.out !== undefined ? r.out : ''; }
+      p = panneauTexte(v, obtenu, aTente, 'SORTIE ATTENDUE');
+    }
+    else p = panneauCriteres(v, sh, hist, aTente);
+    db.innerHTML = p.html;
+    const et = dh.querySelector('.etat');
+    et.textContent = p.resume;
+    et.style.color = (aTente && p.ok) ? 'var(--ok)' : 'var(--mute)';
+    return p.ok;
+  }
+
+  const term=document.createElement('div'); term.className='term';
+  /* Chaque mission garde SON terminal : chacune a son propre setup, donc son
+     propre système de fichiers de départ. Un terminal partagé devrait se
+     réinitialiser entre les missions ou mélanger les états, ce qui serait
+     plus déroutant que répétitif. L'en-tête sert à les distinguer. */
+  const titre=document.createElement('div'); titre.className='termtitre';
+  titre.innerHTML='<span>'+(s.terminal||'SIMULATEUR')+'</span><span class="pwd">~/'+(s.dossier||'travail')+'</span>';
+  const out=document.createElement('div'); out.className='termout';
+  out.setAttribute('role','log'); out.setAttribute('aria-live','polite');
+  const ligne=document.createElement('div'); ligne.className='termline';
+  ligne.innerHTML='<span class="p" aria-hidden="true">%&gt;</span>';
+  const inp=document.createElement('input');
+  inp.spellcheck=false; inp.autocomplete='off'; inp.autocapitalize='off'; inp.autocorrect='off';
+  inp.setAttribute('aria-label','commande à exécuter');
+  ligne.appendChild(inp);
+  const barre=document.createElement('div'); barre.className='termbar';
+  const zoneIndices=document.createElement('div');
+
+  const ecris=(html,cls)=>{ const d=document.createElement('div'); if(cls) d.className=cls;
+    d.innerHTML=html; out.appendChild(d); out.scrollTop=out.scrollHeight; };
+
+  let curseur=-1;
+  function lance(cmd){
+    if(!cmd || resolu) return;
+    ecris('<span class="cmd"><span class="p">%&gt;</span> '+echappe(cmd)+'</span>');
+    hist.push(cmd); curseur=hist.length; aTente=true;
+    const r=run(sh,cmd);
+    if(r && r.err) ecris(echappe(r.err),'err');
+    else if(r && r.out) ecris(echappe(r.out).replace(/\n$/,''));
+    if(rafraichir()){
+      resolu=true; inp.disabled=true; bIndice.disabled=true;
+      ecris('<span class="sys">✓ objectif atteint.</span>');
+      if(s.post){ const p=document.createElement('div'); p.className='hint'; p.innerHTML=s.post; zoneIndices.appendChild(p); }
+      // La mission entre dans la file de révision comme les questions. Résolue
+      // avec un indice, elle retombe en boîte 0 et revient dès demain : c'est
+      // ce qui donne un sens réel au marquage « avec aide », au lieu d'un
+      // simple affichage qui n'agirait sur rien.
+      if(id) srsAdd(id, true, iIndice>0);
+      tacheFinie(iIndice>0);
+    }
+  }
+  inp.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){ const v=inp.value.trim(); inp.value=''; lance(v); return; }
+    if(e.key==='ArrowUp'){ e.preventDefault(); if(curseur>0){ curseur--; inp.value=hist[curseur]; } return; }
+    if(e.key==='ArrowDown'){ e.preventDefault();
+      if(curseur<hist.length-1){ curseur++; inp.value=hist[curseur]; } else { curseur=hist.length; inp.value=''; } }
+  });
+  (s.raccourcis || ['ls -l','help']).forEach(cmd => {
+    const b=document.createElement('button'); b.className='chip'; b.type='button'; b.textContent=cmd;
+    b.onclick=()=>lance(cmd); barre.appendChild(b);
+  });
+  const bIndice=document.createElement('button'); bIndice.className='chip'; bIndice.type='button';
+  bIndice.textContent='indice';
+  bIndice.onclick=()=>{
+    if(iIndice>=s.hints.length) return;
+    const h=document.createElement('div'); h.className='hint';
+    h.innerHTML='<span class="n">INDICE '+(iIndice+1)+' SUR '+s.hints.length+'</span>'+s.hints[iIndice];
+    zoneIndices.appendChild(h); iIndice++;
+    if(iIndice>=s.hints.length){ bIndice.disabled=true; bIndice.textContent='plus d\'indice'; }
+  };
+  barre.appendChild(bIndice);
+
+  term.appendChild(titre); term.appendChild(out); term.appendChild(ligne); term.appendChild(barre);
+  c.appendChild(diff); c.appendChild(term); c.appendChild(zoneIndices);
+  ecris('<span class="sys">Système de fichiers simulé. Tes commandes ont de vrais effets.</span>');
+  rafraichir();
+  w.appendChild(c); return w;
+}
+
+/* ==========================================================================
+   8. MISSION DE CODE C
+   ==========================================================================
+   Le retour cas par cas existait déjà et il est bon : on ne change que son
+   apparence pour l'aligner sur le reste, pas ce qu'il fait. */
+function blocCode(s, id){
+  const w=document.createElement('div'); w.className='step';
+  const c=document.createElement('div'); c.className='box mission';
+  c.appendChild(etiquette('MISSION'));
+  c.insertAdjacentHTML('beforeend',
+    '<div class="brief">'+s.brief+'</div><div class="sig">signature imposée : <b>'+echappe(s.sig)+'</b></div>');
+  const ed=document.createElement('textarea');
+  ed.className='code'; ed.spellcheck=false; ed.autocapitalize='off'; ed.autocomplete='off';
+  ed.setAttribute('aria-label','ton code C');
+  ed.value=s.start||'';
+  ed.addEventListener('keydown',e=>{
+    if(e.key==='Tab'){ e.preventDefault();
+      const a=ed.selectionStart,b=ed.selectionEnd;
+      ed.value=ed.value.slice(0,a)+'    '+ed.value.slice(b);
+      ed.selectionStart=ed.selectionEnd=a+4; }
+  });
+  const barre=document.createElement('div'); barre.className='runbar';
+  const lancer=document.createElement('button'); lancer.className='btn'; lancer.type='button';
+  lancer.textContent='compiler et tester';
+  const remettre=document.createElement('button'); remettre.className='btn ghost'; remettre.type='button';
+  remettre.textContent='repartir de zéro';
+  const bIndice=document.createElement('button'); bIndice.className='chip'; bIndice.type='button';
+  bIndice.textContent='indice';
+  barre.appendChild(lancer); barre.appendChild(remettre); barre.appendChild(bIndice);
+  const res=document.createElement('div'); res.style.marginTop='11px';
+  const zoneIndices=document.createElement('div');
+  let resolu=false, iIndice=0;
+
+  remettre.onclick=()=>{ if(resolu) return; ed.value=s.start||''; res.innerHTML=''; };
+  bIndice.onclick=()=>{
+    if(iIndice>=s.hints.length) return;
+    const h=document.createElement('div'); h.className='hint';
+    h.innerHTML='<span class="n">INDICE '+(iIndice+1)+' SUR '+s.hints.length+'</span>'+s.hints[iIndice];
+    zoneIndices.appendChild(h); iIndice++;
+    if(iIndice>=s.hints.length){ bIndice.disabled=true; bIndice.textContent='plus d\'indice'; }
+  };
+  lancer.onclick=()=>{
+    if(resolu) return;
+    res.innerHTML='';
+    let tout=true, arret=false;
+    for(const tc of s.tests){
+      const r=runC(ed.value, tc.harness, {entry:'main'});
+      const d=document.createElement('div');
+      if(!r.ok){
+        tout=false; arret=true; d.className='tcase ko';
+        d.innerHTML='<span class="lbl">✗ '+echappe(tc.label)+'</span><span class="d">erreur : '+echappe(r.err)+'</span>';
+      } else if(r.out===tc.expect){
+        d.className='tcase ok';
+        d.innerHTML='<span class="lbl">✓ '+echappe(tc.label)+'</span><span class="d">sortie : '+echappe(JSON.stringify(r.out))+'</span>';
+      } else {
+        tout=false; d.className='tcase ko';
+        d.innerHTML='<span class="lbl">✗ '+echappe(tc.label)+'</span>'+
+          '<span class="d">attendu '+echappe(JSON.stringify(tc.expect))+' · obtenu '+echappe(JSON.stringify(r.out))+'</span>';
+      }
+      res.appendChild(d);
+      if(arret) break;
+    }
+    if(tout){
+      resolu=true; lancer.disabled=true; ed.readOnly=true; bIndice.disabled=true;
+      const ok=document.createElement('div');
+      ok.style.cssText='color:var(--ok);font-size:.85rem;margin-top:6px;font-weight:700';
+      ok.textContent='✓ tous les cas passent.';
+      res.appendChild(ok);
+      if(s.post){ const p=document.createElement('div'); p.className='hint'; p.innerHTML=s.post; zoneIndices.appendChild(p); }
+      if(id) srsAdd(id, true, iIndice>0);
+      tacheFinie(iIndice>0);
+    }
+  };
+  c.appendChild(ed); c.appendChild(barre); c.appendChild(res); c.appendChild(zoneIndices);
+  w.appendChild(c); return w;
+}
+
+/* ==========================================================================
+   9. SOUTENANCE BLANCHE
+   ========================================================================== */
+function blocViva(){
+  const w=document.createElement('div'); w.className='step';
+  const carte=document.createElement('div'); carte.className='box';
+  w.appendChild(carte);
+  let i=0, bons=0;
+  function montrer(){
+    if(i>=VIVA.length){
+      // Un seuil unique pour le message et pour la validation : les deux
+      // divergeaient (8 annoncé, 7 appliqué) dans la version précédente.
+      const seuil=Math.ceil(VIVA.length*0.8);
+      carte.innerHTML='<h2>Fin de la soutenance blanche</h2>'+
+        '<p style="font-size:.9rem">Score honnête : <b>'+bons+' / '+VIVA.length+'</b>.</p>'+
+        '<p style="font-size:.88rem;color:var(--dim);margin-top:8px">'+
+        (bons>=seuil ? 'Tu peux aller te faire corriger par un humain. C\'est la seule vraie répétition.'
+                     : 'Reprends les salles correspondant à ce que tu n\'as pas su dire, puis reviens.')+'</p>';
+      // L'identifiant est déduit de la dernière salle, jamais écrit en dur :
+      // la version précédente écrivait 'r10' sur les quatre pages, or il
+      // n'existe que dans shell00, et la salle ne se validait donc jamais
+      // ailleurs pendant que le hub comptait une salle fantôme.
+      const idBoss=ROOMS[ROOMS.length-1].id;
+      const st=S.rooms[idBoss]||{done:0,cleared:false};
+      st.done=1; st.cleared=bons>=seuil; S.rooms[idBoss]=st; save(); peindreAccueil();
+      return;
+    }
+    const q=VIVA[i];
+    carte.innerHTML='';
+    carte.appendChild(etiquette('QUESTION '+(i+1)+' SUR '+VIVA.length));
+    carte.insertAdjacentHTML('beforeend','<div class="q">'+q.q+'</div>'+
+      '<p style="font-size:.8rem;color:var(--mute)">À voix haute, en entier, avant de révéler.</p>');
+    const rev=document.createElement('button'); rev.className='btn ghost'; rev.type='button'; rev.textContent='révéler';
+    const boite=document.createElement('div'); boite.className='answerbox hidden';
+    boite.innerHTML='<div class="lab2">CE QU\'UN CORRECTEUR ATTEND</div>'+q.a;
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;gap:8px;margin-top:11px;flex-wrap:wrap';
+    rev.onclick=()=>{
+      boite.classList.remove('hidden'); rev.classList.add('hidden');
+      const oui=document.createElement('button'); oui.className='btn'; oui.type='button'; oui.textContent='j\'avais dit ça';
+      const non=document.createElement('button'); non.className='btn ghost'; non.type='button'; non.textContent='pas encore';
+      // Les réponses orales entrent dans la révision, comme les autres.
+      oui.onclick=()=>{ bons++; srsAdd('viva.'+i,true,false); i++; montrer(); };
+      non.onclick=()=>{ srsAdd('viva.'+i,false,false); i++; montrer(); };
+      row.appendChild(oui); row.appendChild(non);
+    };
+    carte.appendChild(rev); carte.appendChild(boite); carte.appendChild(row);
+  }
+  montrer();
+  return w;
+}
+
+/* ==========================================================================
+   10. RÉVISION ESPACÉE
+   ========================================================================== */
+function lancerRevision(){
+  const dues=new Set(srsDues());
+  const pioche=questionsRejouables().filter(q=>dues.has(q.id));
+  // Les questions de soutenance dues, retrouvées par leur index.
+  VIVA.forEach((q,i)=>{ if(dues.has('viva.'+i)) pioche.push({id:'viva.'+i, step:{k:'answer',h:'À dire à voix haute',q:q.q,a:q.a}}); });
+  if(!pioche.length) return;
+  pioche.sort(()=>Math.random()-0.5);
+  vueAccueil.classList.add('hidden'); vueSalle.classList.remove('hidden'); window.scrollTo(0,0);
+  COURANTE={ r:{id:'__revision'}, idx:-1, faites:0, total:pioche.length, aides:0 };
+  teteSalle.innerHTML=
+    '<div class="l1"><button class="back" id="retour">&larr; ls ..</button><h1>Révision</h1></div>'+
+    '<div class="l2"><div class="bits" id="bitsSalle" role="img"></div><span class="count" id="compteSalle"></span></div>';
+  $('#retour').onclick=retourAccueil;
+  corpsSalle.innerHTML='';
+  corpsSalle.insertAdjacentHTML('beforeend',
+    '<p style="font-size:.85rem;color:var(--dim);margin-top:12px">Mélangées entre les salles, exprès : '+
+    'réviser un thème d\'affilée donne l\'illusion de savoir.</p>');
+  pioche.forEach(q=>{
+    const el = q.step.k==='answer' ? blocOral(q.step,q.id)
+             : q.step.k==='input'  ? blocSaisie(q.step,q.id)
+             : q.step.k==='term'   ? blocMission(q.step,q.id)
+             : q.step.k==='code'   ? blocCode(q.step,q.id)
+             : q.step.k==='bug'    ? blocDiagnostic(q.step,q.id)
+             : blocChoix(q.step,q.id,'QUESTION','note');
+    corpsSalle.appendChild(el);
+  });
+  peindreTeteSalle();
+}
+
+/* ==========================================================================
+   11. SAUVEGARDE MANUELLE
+   ==========================================================================
+   Format inchangé : {x, r, s, k, l}. Les xp et la série n'existent plus, mais
+   les clés restent écrites et relues pour qu'un code enregistré avant ce
+   changement reste lisible, et qu'un code produit maintenant reste lisible
+   par une version antérieure. L'étudiant garde ses codes hors de l'appli. */
+function encoderEtat(){
+  const json=JSON.stringify({x:0, r:S.rooms, s:S.srs, k:0, l:S.last, h:S.aide});
+  return btoa(unescape(encodeURIComponent(json))).replace(/=+$/,'');
+}
+function decoderEtat(code){
+  const c=code.trim().replace(/\s+/g,'');
+  const pad='='.repeat((4-c.length%4)%4);
+  const o=JSON.parse(decodeURIComponent(escape(atob(c+pad))));
+  if(typeof o.r!=='object' || o.r===null) throw new Error('structure inattendue');
+  return { rooms:o.r||{}, srs:o.s||{}, aide:o.h||{}, last:o.l||null, viva:{} };
+}
+
+/* ==========================================================================
+   12. DÉMARRAGE
+   ========================================================================== */
+function brancherAccueil(){
+  $('#srsBtn').onclick=lancerRevision;
+  const zone=$('#ioZone'), texte=$('#ioTexte'), msg=$('#ioMsg');
+  const ouvrir=mode=>{
+    zone.classList.remove('hidden'); msg.textContent=''; msg.style.color='var(--dim)';
+    $('#ioGo').classList.toggle('hidden', mode==='export');
+    if(mode==='export'){
+      texte.value=encoderEtat(); texte.select();
+      if(navigator.clipboard) navigator.clipboard.writeText(texte.value)
+        .then(()=>{ msg.textContent='copié — colle-le dans une note'; })
+        .catch(()=>{ msg.textContent='sélectionne tout et copie à la main'; });
+      else msg.textContent='sélectionne tout et copie à la main';
+    } else { texte.value=''; texte.placeholder='colle ton code de sauvegarde ici'; texte.focus(); }
+    zone.scrollIntoView({behavior:'smooth',block:'nearest'});
+  };
+  $('#expBtn').onclick=()=>ouvrir('export');
+  $('#impBtn').onclick=()=>ouvrir('import');
+  $('#ioFermer').onclick=()=>zone.classList.add('hidden');
+  $('#ioGo').onclick=()=>{
+    try{
+      S=Object.assign(S, decoderEtat(texte.value)); save(); peindreAccueil();
+      msg.textContent='progression restaurée'; msg.style.color='var(--ok)';
+    }catch(e){
+      msg.textContent='code illisible : '+(e.message||e); msg.style.color='var(--ko)';
+    }
+  };
+}
+(async function demarrer(){
+  const sauve=await store.get();
+  if(sauve) S=Object.assign(S, sauve);
+  if(!S.aide) S.aide={};
+  S.last=aujourdhui();
+  brancherAccueil();
+  peindreAccueil();
+  save();
+})();
+</script>
+</body>
+</html>

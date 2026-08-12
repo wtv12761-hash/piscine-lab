@@ -1,0 +1,8 @@
+# Aucune conversion de fins de ligne.
+#
+# Les pages livrées doivent rester octet pour octet ce que produit
+# src/build.mjs. Si git convertissait les LF en CRLF au passage, un clone frais
+# donnerait des fichiers différents de la construction, et
+# `node src/build.mjs --verifie` signalerait un écart sur chaque page alors que
+# rien n'aurait changé. Le test de non-divergence perdrait tout son sens.
+* -text
