@@ -1355,7 +1355,8 @@ function peindreAccueil(){
   const sues = Object.values(S.premier).filter(Boolean).length;
   const total = questionsRejouables().length + VIVA.length;
   $('#maitrise').textContent = tentees
-    ? sues + ' sur ' + tentees + ' su' + (sues>1?'es':'') + ' du premier coup, sur ' + total + ' questions au total.'
+    ? 'Tu as su ' + sues + ' question' + (sues>1?'s':'') + ' sur ' + tentees + ' du premier coup.'
+      + ' Le module en compte ' + total + '.'
       + (tentees < total ? " Il en reste " + (total - tentees) + " que tu n'as pas encore vues." : '')
     : "Aucune question tentée pour l'instant. Ce compteur dira ce que tu savais du premier coup, pas ce que tu as fini par trouver.";
 

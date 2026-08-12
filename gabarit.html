@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>{{TITRE}}</title>
+<style>
+{{THEME}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<main id="accueil">
+  <div class="brand">
+    <span class="u">student@campus</span>:{{INVITE}} %
+    <h1>{{H1}}</h1>
+  </div>
+
+  <div class="lsbox">
+    <div class="lshead">ls -l {{INVITE}} &nbsp;—&nbsp; chaque salle validée allume ses bits</div>
+    <div class="lsbody" id="lsbody"></div>
+    <div class="total" id="totalLigne"></div>
+  </div>
+
+  <div class="panneau" aria-live="polite">
+    <div style="flex:1;min-width:0">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="bits" id="bitsModule" role="img"></div>
+        <span class="count" id="compteSalles"></span>
+      </div>
+      <div class="s" id="maitrise" style="margin-top:7px"></div>
+    </div>
+  </div>
+
+  <div class="panneau accent">
+    <div>
+      <div class="t" id="srsT">Révision espacée</div>
+      <div class="s" id="srsS"></div>
+    </div>
+    <div class="actions">
+      <button class="btn ghost hidden" id="srsBref" type="button">5 minutes</button>
+      <button class="btn" id="srsBtn" type="button">réviser</button>
+    </div>
+  </div>
+
+  <div class="panneau">
+    <div>
+      <div class="t">Sauvegarde manuelle</div>
+      <div class="s">La progression vit dans ce navigateur. Pour la transporter, copie ce code et recolle-le ailleurs : il contient les salles, la file de révision et ce qui a été résolu avec aide.</div>
+    </div>
+    <div class="actions">
+      <button class="btn ghost" id="expBtn" type="button">copier mon code</button>
+      <button class="btn ghost" id="impBtn" type="button">restaurer</button>
+    </div>
+  </div>
+  <div id="ioZone" class="hidden" style="margin-top:10px">
+    <textarea id="ioTexte" class="io" spellcheck="false" aria-label="code de sauvegarde"></textarea>
+    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center">
+      <button class="btn" id="ioGo" type="button">appliquer</button>
+      <button class="btn ghost" id="ioFermer" type="button">fermer</button>
+      <span id="ioMsg" style="font-size:.79rem;color:var(--dim)"></span>
+    </div>
+  </div>
+</main>
+
+<section id="salle" class="hidden">
+  <header class="rhead" id="teteSalle"></header>
+  <div id="corpsSalle"></div>
+</section>
+
+<footer>
+  <a href="index.html">&larr; tous les modules</a><br><br>
+  {{PIED}}
+</footer>
+</div>
+
+<script>
+/* ==========================================================================
+   Page générée par src/build.mjs. Ne pas éditer ici : les modifications
+   seraient écrasées à la construction suivante, et tests/test_sources.js
+   échouerait en constatant l'écart. Les sources sont dans src/.
+   ========================================================================== */
+
+/* --- 1. moteur --- */
+{{MOTEUR}}
+
+/* --- 2. widgets --- */
+{{WIDGETS}}
+
+/* --- 3. contenu du module --- */
+{{CONTENU}}
+
+/* --- 4. application --- */
+{{APP}}
+</script>
+</body>
+</html>

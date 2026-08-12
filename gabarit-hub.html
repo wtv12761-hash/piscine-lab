@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>piscine.lab — modules</title>
+<style>
+{{THEME}}
+/* Le hub n'a pas de salle : la carte de reprise y prend la place que la
+   mission occupe dans une salle, parce que c'est la même chose, l'action
+   principale de la page. */
+.reprise{border-left:3px solid var(--amber);
+  background:linear-gradient(90deg,rgba(229,83,61,.09),transparent 65%),var(--panel)}
+.reprise .t{font-size:.95rem;font-weight:700}
+a.btn{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+a.lsrow{text-decoration:none}
+.tagline{font-size:.85rem;color:var(--dim);margin-top:10px;max-width:56ch}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="brand">
+    <span class="u">student@campus</span>:~/piscine.lab %
+    <h1>MODULES</h1>
+  </div>
+  <p class="tagline">Chaque module ouvre une série de salles : une notion courte, un objet à manipuler, une mission exécutée pour de vrai, puis des questions. Les scénarios ne reprennent jamais les valeurs du sujet : on y apprend le mécanisme, pas la réponse.</p>
+
+  <div class="panneau reprise" style="margin-top:16px">
+    <div>
+      <div class="t" id="reprendreT">Reprendre où tu en étais</div>
+      <div class="s" id="reprendreS"></div>
+    </div>
+    <div class="actions"><a class="btn" id="reprendre" href="shell00.html">reprendre</a></div>
+  </div>
+
+  <div class="lsbox">
+    <div class="lshead">ls -l ~/piscine.lab &nbsp;—&nbsp; un module par ligne</div>
+    <div class="lsbody" id="lsbody"></div>
+  </div>
+
+  <div class="panneau" aria-live="polite">
+    <div class="bits" id="bitsTotal" role="img"></div>
+    <span class="count" id="compteTotal"></span>
+  </div>
+
+  <div class="panneau">
+    <div>
+      <div class="t">Sauvegarde</div>
+      <div class="s">La progression vit dans ce navigateur, sur ce domaine. Elle survit aux mises à jour du site, mais pas à un changement d'appareil ni à un nettoyage. Dans chaque module, le bloc « Sauvegarde manuelle » donne un code à copier et à recoller ailleurs.</div>
+    </div>
+  </div>
+
+  <footer>
+    Ce lab entraîne la main et la tête. La note vient de la soutenance :<br>
+    un humain, en face de toi, qui te demande d'expliquer.
+  </footer>
+</div>
+
+<script>
+/* ==========================================================================
+   Page générée par src/build.mjs à partir de src/hub.js. Ne pas éditer ici.
+   ========================================================================== */
+{{HUB}}
+</script>
+</body>
+</html>
