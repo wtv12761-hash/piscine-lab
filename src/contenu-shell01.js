@@ -122,6 +122,13 @@ steps:[
   hints:["ls ne descend pas dans les sous-dossiers. Tu connais depuis Shell 00 la commande qui parcourt une arborescence entière.",
          "find produit une ligne par résultat. Il ne te reste qu'à compter ces lignes.",
          "find . -name \"MOTIF\" | wc -l"]},
+ {k:'bug',
+  contexte:"Un camarade doit compter tous les fichiers de configuration, sous-dossiers compris. Il obtient 2 et il est sûr de sa commande :",
+  code:"$ ls\napp.conf  etc  lisezmoi.txt\n$ ls | grep conf | wc -l\n2",
+  q:"Pourquoi son compte est-il faux ?",
+  opts:["Il aurait fallu utiliser -c sur grep","ls ne descend pas dans les sous-dossiers, et il compte aussi le dossier etc dont le nom contient conf","wc -l ne compte pas correctement les lignes","Le pipe perd des lignes en route"],
+  a:1,
+  why:"Deux fautes en une, et c'est ce qui la rend instructive. D'abord <code>ls</code> ne parcourt que le dossier courant : tout ce qui est plus bas est invisible. Ensuite le filtre porte sur le nom, donc le dossier <code>etc</code> passe. Compter n'est jamais le problème ; choisir ce qu'on compte, si."},
  {k:'mcq',h:'',q:"Ton dossier contient 4 fichiers visibles, 2 fichiers cachés et un sous-dossier avec 3 fichiers. Que renvoie <code>ls | wc -l</code> ?",
   opts:['5','6','9','10'],a:0,
   why:"ls affiche les 4 visibles plus le sous-dossier lui-même, soit 5 lignes. Il ignore les cachés et ne descend pas dedans. Compter n'est jamais le problème : bien choisir ce qu'on compte, si."}

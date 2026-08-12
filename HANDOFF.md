@@ -115,6 +115,38 @@ Ce n'est pas un site de solutions. C'est un lab d'entraînement : on y apprend l
 4. **Les tests doivent attraper l'erreur classique**, pas seulement valider le cas nominal.
    Voir §9.
 
+### 3.1 bis Les quatre mécanismes d'apprentissage, et comment ils cohabitent
+
+Ils ont été ajoutés ensemble, en veillant à ce qu'aucun n'allonge une salle sans
+raison. Le principe : **au plus une étape en plus par module**, le reste vit à
+l'intérieur de ce qui existait déjà.
+
+1. **`bug` : trouver l'erreur.** Une étape par module, pas une par salle. On montre un
+   travail plausible mais faux et on demande le diagnostic. Les fautes viennent de
+   celles que la suite de tests attrape déjà, donc de fautes réellement commises.
+   C'est la compétence exacte de la correction par les pairs, dans les deux sens :
+   défendre son code et corriger celui d'un camarade.
+
+2. **Lire un message du compilateur.** Fusionné dans le même type d'étape plutôt que
+   d'en créer un nouveau : le `bug` de C 00 montre une sortie de `cc` et demande
+   combien de problèmes distincts elle contient réellement. Une salle entière aurait
+   été du remplissage ; une étape au bon endroit suffit.
+
+3. **Prédire avant d'exécuter.** Un champ dans la mission de code, facultatif, au-dessus
+   du bouton. On écrit ce qu'on croit que le premier cas va afficher, et la confrontation
+   se fait toute seule. **Ce n'est pas une étape de plus** : c'est ce qui la rend
+   supportable sur les treize missions C.
+
+4. **Le décompte du premier coup.** Une phrase sur l'accueil du module : combien de
+   questions ont été sues au premier essai, sur combien de tentées, sur combien au
+   total. `S.premier[id]` n'est écrit qu'une fois et n'est jamais écrasé : refaire une
+   salle jusqu'à ce que tout soit vert ne doit pas faire monter le chiffre, sans quoi
+   il redevient un score déguisé.
+
+**La révision ne se déclenche jamais toute seule.** Deux boutons : une session courte de
+sept questions, et tout. Une file de trente questions qui tombe d'un bloc se repousse au
+lieu de se faire.
+
 ### 3.2 Vie privée
 
 **Aucune donnée personnelle nulle part dans le dépôt.** Pas de login, pas de nom de campus,
@@ -447,7 +479,7 @@ Lancé automatiquement par `run_all.sh`. Il vérifie que **la documentation ne m
 **Si tu changes une structure, la doc doit suivre, sinon cet audit échoue.** C'est
 volontaire : trois documents qui divergent du code sont pires que pas de documentation.
 
-État actuel : **567 assertions de test + 132 contrôles d'audit**, tous verts.
+État actuel : **570 assertions de test + 132 contrôles d'audit**, tous verts.
 Ces deux chiffres sont vérifiés par la machine : `verify_docs.js` compare le nombre de
 contrôles annoncé au nombre réel, et `run_all.sh` fait la même chose pour les assertions.
 La version précédente annonçait 116 contrôles pour 117 réels, sans que rien ne le voie.

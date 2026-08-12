@@ -25,8 +25,13 @@
   </div>
 
   <div class="panneau" aria-live="polite">
-    <div class="bits" id="bitsModule" role="img"></div>
-    <span class="count" id="compteSalles"></span>
+    <div style="flex:1;min-width:0">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="bits" id="bitsModule" role="img"></div>
+        <span class="count" id="compteSalles"></span>
+      </div>
+      <div class="s" id="maitrise" style="margin-top:7px"></div>
+    </div>
   </div>
 
   <div class="panneau accent">
@@ -34,7 +39,10 @@
       <div class="t" id="srsT">Révision espacée</div>
       <div class="s" id="srsS"></div>
     </div>
-    <div class="actions"><button class="btn" id="srsBtn" type="button">réviser</button></div>
+    <div class="actions">
+      <button class="btn ghost hidden" id="srsBref" type="button">5 minutes</button>
+      <button class="btn" id="srsBtn" type="button">réviser</button>
+    </div>
   </div>
 
   <div class="panneau">

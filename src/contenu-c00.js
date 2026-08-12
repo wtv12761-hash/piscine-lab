@@ -96,6 +96,13 @@ steps:[
   hints:["Trois cas : un if, un else if, un else.",
          "Attention à zéro : il n'est ni négatif ni positif, c'est un cas à part entière.",
          "Pour afficher une lettre fixe, tu peux la stocker : char c = 'N'; puis write."]},
+ {k:'bug',
+  contexte:"Le lab exécute ton code, mais il n\'est pas un compilateur. À l\'école, c\'est <code>cc</code> qui parle, et il faut savoir le lire. Un camarade te montre ceci :",
+  code:"$ cc -Wall -Wextra -Werror ft_boucle.c\nft_boucle.c:5:9: error: use of undeclared identifier 'i'\n    while (i < 10)\n           ^\nft_boucle.c:7:3: error: use of undeclared identifier 'i'\n        i++;\n        ^\n2 errors generated.",
+  q:"Combien de problèmes distincts y a-t-il réellement, et où ?",
+  opts:["Deux problèmes, aux lignes 5 et 7","Un seul : la variable i n\'a jamais été déclarée, et les deux messages en découlent","Un problème de parenthèses à la ligne 5","Le compilateur refuse les boucles while avec -Werror"],
+  a:1,
+  why:"Le compilateur signale chaque <b>endroit</b> où il bute, pas chaque <b>cause</b>. Ici une seule déclaration manquante produit deux messages. Le réflexe qui fait gagner le plus de temps : corriger la <b>première</b> erreur, recompiler, et ne surtout pas essayer de traiter la liste entière. La colonne et le chapeau <code>^</code> pointent le caractère exact."},
  {k:'mcq',h:'',q:"En C, <code>while (c)</code> s'arrête quand ?",
   opts:["Quand c vaut 0","Quand c est faux au sens booléen","Jamais","Quand c est négatif"],a:0,
   why:"Il n'y a pas de type booléen : zéro est faux, tout le reste est vrai. Cette règle est exactement ce qui permet de parcourir une chaîne jusqu'à son zéro final."}

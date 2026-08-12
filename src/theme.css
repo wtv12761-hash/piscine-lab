@@ -210,7 +210,15 @@ textarea.code{width:100%;min-height:190px;background:#0f141b;border:1px solid va
   border-radius:var(--r);color:var(--ink);font-family:var(--mono);font-size:14px;padding:11px 12px;
   resize:vertical;line-height:1.55;margin-top:10px;tab-size:4}
 textarea.code:focus{border-color:var(--amber2);outline:none}
-.runbar{display:flex;gap:8px;margin-top:9px;flex-wrap:wrap}
+.runbar{display:flex;gap:8px;margin-top:11px;flex-wrap:wrap}
+.pred{margin-top:11px}
+.pred label{display:block;font-size:.83rem;color:var(--dim);margin-bottom:6px}
+.pred input{width:100%;background:var(--bg2);border:1px solid var(--line2);border-radius:var(--r);
+  color:var(--ink);font-family:var(--mono);font-size:16px;padding:0 12px;min-height:var(--tap)}
+.pred input:focus{border-color:var(--amber2);outline:none}
+.pred input:disabled{opacity:.6}
+.predout{font-size:.83rem;margin-top:7px}
+.predout.juste{color:var(--ok)} .predout.ecart{color:var(--amber2)}
 
 .faute{background:#0f141b;border:1px solid var(--line2);border-left:3px solid var(--ko);
   border-radius:var(--r);padding:11px 12px;margin-top:10px;font-family:var(--mono);

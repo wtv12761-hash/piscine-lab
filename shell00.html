@@ -218,7 +218,15 @@ textarea.code{width:100%;min-height:190px;background:#0f141b;border:1px solid va
   border-radius:var(--r);color:var(--ink);font-family:var(--mono);font-size:14px;padding:11px 12px;
   resize:vertical;line-height:1.55;margin-top:10px;tab-size:4}
 textarea.code:focus{border-color:var(--amber2);outline:none}
-.runbar{display:flex;gap:8px;margin-top:9px;flex-wrap:wrap}
+.runbar{display:flex;gap:8px;margin-top:11px;flex-wrap:wrap}
+.pred{margin-top:11px}
+.pred label{display:block;font-size:.83rem;color:var(--dim);margin-bottom:6px}
+.pred input{width:100%;background:var(--bg2);border:1px solid var(--line2);border-radius:var(--r);
+  color:var(--ink);font-family:var(--mono);font-size:16px;padding:0 12px;min-height:var(--tap)}
+.pred input:focus{border-color:var(--amber2);outline:none}
+.pred input:disabled{opacity:.6}
+.predout{font-size:.83rem;margin-top:7px}
+.predout.juste{color:var(--ok)} .predout.ecart{color:var(--amber2)}
 
 .faute{background:#0f141b;border:1px solid var(--line2);border-left:3px solid var(--ko);
   border-radius:var(--r);padding:11px 12px;margin-top:10px;font-family:var(--mono);
@@ -320,8 +328,13 @@ textarea.io{width:100%;min-height:80px;background:var(--bg2);border:1px solid va
   </div>
 
   <div class="panneau" aria-live="polite">
-    <div class="bits" id="bitsModule" role="img"></div>
-    <span class="count" id="compteSalles"></span>
+    <div style="flex:1;min-width:0">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="bits" id="bitsModule" role="img"></div>
+        <span class="count" id="compteSalles"></span>
+      </div>
+      <div class="s" id="maitrise" style="margin-top:7px"></div>
+    </div>
   </div>
 
   <div class="panneau accent">
@@ -329,7 +342,10 @@ textarea.io{width:100%;min-height:80px;background:var(--bg2);border:1px solid va
       <div class="t" id="srsT">Révision espacée</div>
       <div class="s" id="srsS"></div>
     </div>
-    <div class="actions"><button class="btn" id="srsBtn" type="button">réviser</button></div>
+    <div class="actions">
+      <button class="btn ghost hidden" id="srsBref" type="button">5 minutes</button>
+      <button class="btn" id="srsBtn" type="button">réviser</button>
+    </div>
   </div>
 
   <div class="panneau">
@@ -1542,7 +1558,7 @@ const MODE_C = typeof runC === 'function';
    1. ÉTAT ET PERSISTANCE
    ========================================================================== */
 const KEY = MODULE.cle;
-let S = { rooms:{}, srs:{}, aide:{}, last:null, viva:{} };
+let S = { rooms:{}, srs:{}, aide:{}, premier:{}, last:null, viva:{} };
 
 const store = {
   async get(){
@@ -1566,6 +1582,11 @@ const BOITES = [0,1,3,7,16];
    C'est ce qui remplace le coût en points. Un marquage qui n'agirait sur rien
    serait exactement le faux signal qu'on a voulu supprimer. */
 function srsAdd(id, juste, avecAide){
+  /* Le verdict du tout premier essai, enregistré une seule fois. C'est le seul
+     chiffre honnête sur ce qu'on savait vraiment : refaire une salle jusqu'à
+     ce que tout soit vert ne dit rien, et un compteur qui monte à force de
+     réessayer serait exactement le faux signal qu'on a supprimé avec les xp. */
+  if(S.premier[id] === undefined) S.premier[id] = !!juste && !avecAide;
   const e = S.srs[id] || {box:0};
   e.box = (juste && !avecAide) ? Math.min(4, e.box+1) : 0;
   const d = new Date(); d.setDate(d.getDate() + BOITES[e.box]);
@@ -1739,7 +1760,21 @@ function peindreAccueil(){
     ? connues+' questions en mémoire' + (avecAide ? ', dont '+avecAide+' résolue'+(avecAide>1?'s':'')+' avec aide qui revien'+(avecAide>1?'nent':'t')+' plus vite' : '')
       + '. Les ratées reviennent demain, les acquises s\'espacent (1, 3, 7, 16 jours).'
     : 'Réponds aux questions des salles : elles entrent dans la file de révision.';
-  $('#srsBtn').disabled = dues === 0;
+  const tentees = Object.keys(S.premier).length;
+  const sues = Object.values(S.premier).filter(Boolean).length;
+  const total = questionsRejouables().length + VIVA.length;
+  $('#maitrise').textContent = tentees
+    ? sues + ' sur ' + tentees + ' su' + (sues>1?'es':'') + ' du premier coup, sur ' + total + ' questions au total.'
+      + (tentees < total ? " Il en reste " + (total - tentees) + " que tu n'as pas encore vues." : '')
+    : "Aucune question tentée pour l'instant. Ce compteur dira ce que tu savais du premier coup, pas ce que tu as fini par trouver.";
+
+  const bref = $('#srsBref'), tout = $('#srsBtn');
+  tout.disabled = dues === 0;
+  tout.textContent = dues ? 'tout revoir (' + dues + ')' : 'réviser';
+  // Une session courte est proposée dès qu'il y a de quoi en faire une : c'est
+  // ce qui rend la révision faisable entre deux exercices, sur le téléphone.
+  bref.classList.toggle('hidden', dues < 8);
+  bref.textContent = '5 minutes (7)';
 }
 
 /* ==========================================================================
@@ -2185,6 +2220,20 @@ function blocCode(s, id){
       ed.value=ed.value.slice(0,a)+'    '+ed.value.slice(b);
       ed.selectionStart=ed.selectionEnd=a+4; }
   });
+  /* Prédire avant d'exécuter. Ce n'est pas une étape de plus : c'est un champ
+     dans la mission, facultatif, qui se compare tout seul au premier cas de
+     test. Écrire ce qu'on croit puis voir l'écart apprend davantage que
+     relancer jusqu'à ce que ça passe. */
+  const pred=document.createElement('div'); pred.className='pred';
+  pred.innerHTML='<label for="p'+(s.sig||'').replace(/\W/g,'')+'">Avant de lancer, que va afficher <b>'+
+    echappe(s.tests[0].label)+'</b> ?</label>';
+  const predIn=document.createElement('input');
+  predIn.type='text'; predIn.spellcheck=false; predIn.autocapitalize='off';
+  predIn.id='p'+(s.sig||'').replace(/\W/g,'');
+  predIn.placeholder='facultatif';
+  const predOut=document.createElement('div'); predOut.className='predout';
+  pred.appendChild(predIn); pred.appendChild(predOut);
+
   const barre=document.createElement('div'); barre.className='runbar';
   const lancer=document.createElement('button'); lancer.className='btn'; lancer.type='button';
   lancer.textContent='compiler et tester';
@@ -2208,6 +2257,21 @@ function blocCode(s, id){
   lancer.onclick=()=>{
     if(resolu) return;
     res.innerHTML='';
+    // On confronte la prédiction au premier cas, une seule fois.
+    if(predIn.value.trim() && !predIn.disabled){
+      const attendu=s.tests[0].expect;
+      const r0=runC(ed.value, s.tests[0].harness, {entry:'main'});
+      const obtenu=r0.ok ? r0.out : null;
+      const vu=predIn.value.trim().replace(/^["']|["']$/g,'');
+      predIn.disabled=true;
+      predOut.className='predout ' + (vu===obtenu ? 'juste' : 'ecart');
+      predOut.textContent = obtenu===null
+        ? "ton code n'a pas pu tourner, donc rien à comparer pour l'instant."
+        : vu===obtenu
+          ? 'tu avais vu juste : ' + JSON.stringify(obtenu)
+          : 'tu prévoyais ' + JSON.stringify(vu) + ', ton code produit ' + JSON.stringify(obtenu) +
+            ". C'est cet écart qui t'apprend quelque chose.";
+    }
     let tout=true, arret=false;
     for(const tc of s.tests){
       const r=runC(ed.value, tc.harness, {entry:'main'});
@@ -2238,7 +2302,7 @@ function blocCode(s, id){
       tacheFinie(iIndice>0);
     }
   };
-  c.appendChild(ed); c.appendChild(barre); c.appendChild(res); c.appendChild(zoneIndices);
+  c.appendChild(ed); c.appendChild(pred); c.appendChild(barre); c.appendChild(res); c.appendChild(zoneIndices);
   return w;
 }
 
@@ -2296,13 +2360,18 @@ function blocViva(){
 /* ==========================================================================
    10. RÉVISION ESPACÉE
    ========================================================================== */
-function lancerRevision(){
+/* La révision ne se déclenche jamais toute seule et ne déverse jamais tout
+   d'un coup : on choisit le moment ET la taille. Une file de trente questions
+   qui tombe d'un bloc décourage, et on la repousse au lieu de la faire. */
+function lancerRevision(taille){
   const dues=new Set(srsDues());
   const pioche=questionsRejouables().filter(q=>dues.has(q.id));
   // Les questions de soutenance dues, retrouvées par leur index.
   VIVA.forEach((q,i)=>{ if(dues.has('viva.'+i)) pioche.push({id:'viva.'+i, step:{k:'answer',h:'À dire à voix haute',q:q.q,a:q.a}}); });
   if(!pioche.length) return;
   pioche.sort(()=>Math.random()-0.5);
+  const total=pioche.length;
+  if(taille && taille<total) pioche.length=taille;
   vueAccueil.classList.add('hidden'); vueSalle.classList.remove('hidden'); window.scrollTo(0,0);
   COURANTE={ r:{id:'__revision'}, idx:-1, faites:0, total:pioche.length, aides:0 };
   teteSalle.innerHTML=
@@ -2348,7 +2417,8 @@ function decoderEtat(code){
    12. DÉMARRAGE
    ========================================================================== */
 function brancherAccueil(){
-  $('#srsBtn').onclick=lancerRevision;
+  $('#srsBtn').onclick=()=>lancerRevision(0);
+  $('#srsBref').onclick=()=>lancerRevision(7);
   const zone=$('#ioZone'), texte=$('#ioTexte'), msg=$('#ioMsg');
   const ouvrir=mode=>{
     zone.classList.remove('hidden'); msg.textContent=''; msg.style.color='var(--dim)';
