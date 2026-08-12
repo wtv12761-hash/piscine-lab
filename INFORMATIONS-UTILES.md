@@ -19,6 +19,7 @@ Voir aussi `CONTEXT.md` (le pourquoi) et `HANDOFF.md` (comment travailler sur le
 | `INFORMATIONS-UTILES.md` | ce fichier | — | — |
 | `tests/` | vérification | — | — |
 | `.gitignore` | ignore `tests/_*.js` (générés) et les supports de cours | — | — |
+| `.gitattributes` | interdit la conversion des fins de ligne, sans quoi un clone diffèrerait de la construction | — | — |
 
 Hors dépôt, à côté : `shell00/`, `shell01/`, `C00/`, `C01/` contiennent les sujets PDF et
 les ressources fournies par l'école. Ils servent à vérifier la règle 1 et ne sont pas
@@ -35,7 +36,7 @@ versionnés : le dépôt est public et ces documents ne sont pas notre travail.
 
 Les missions C exécutent **18 cas de test** en C 00 et **24** en C 01.
 
-**Suite de vérification, 566 assertions :**
+**Suite de vérification, 567 assertions :**
 
 | Fichier | Assertions | Couvre |
 |---|---|---|
