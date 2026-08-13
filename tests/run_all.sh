@@ -52,7 +52,7 @@ fi
 
 echo ""
 echo "### syntaxe des pages"
-for p in index.html shell00.html shell01.html c00.html c01.html; do
+for p in $(node -e "console.log(require('./tests/pages.js').TOUTES.join(' '))"); do
   sortie=$(node -e "
     const fs=require('fs');const s=fs.readFileSync('$p','utf8');
     const js=s.slice(s.indexOf('<script>')+8,s.lastIndexOf('</script>'));

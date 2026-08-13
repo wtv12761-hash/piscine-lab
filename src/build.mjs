@@ -27,6 +27,9 @@ const MODULES = [
     h1:"C 00", pied:"L'interpréteur exécute réellement ton code. Ce n'est ni cc -Wall -Wextra -Werror, ni la norminette." },
   { page:'c01.html', contenu:'contenu-c01.js', moteur:'moteur-c.js',
     h1:"C 01", pied:"L'interpréteur exécute réellement ton code. Ce n'est ni cc -Wall -Wextra -Werror, ni la norminette." },
+  /* La révision mélange shell et C, donc elle charge les deux moteurs. */
+  { page:'revision.html', contenu:'contenu-revision.js', moteur:['moteur-shell.js','moteur-c.js'],
+    h1:"RÉVISION", pied:"git, norminette et cc sont simulés pour faire vivre leurs erreurs. Sur le poste de l'école, ce sont les vrais outils qui décident." },
 ];
 
 const gabarit = lis('gabarit.html');
@@ -57,7 +60,12 @@ for(const m of MODULES){
   page = pose(page,'H1', m.h1);
   page = pose(page,'PIED', m.pied);
   page = pose(page,'THEME', theme.trimEnd());
-  page = pose(page,'MOTEUR', lis(m.moteur).trimEnd());
+  /* Une page peut charger plusieurs moteurs. La salle de révision en a besoin :
+     elle fait pratiquer du shell et du C dans la même page. Les deux moteurs
+     ne partagent aucun symbole de premier niveau, ce qui est vérifié par
+     tests/test_outillage.js plutôt que supposé ici. */
+  const moteurs = Array.isArray(m.moteur) ? m.moteur : [m.moteur];
+  page = pose(page,'MOTEUR', moteurs.map(f => lis(f).trimEnd()).join('\n\n'));
   page = pose(page,'WIDGETS', widgets.trimEnd());
   page = pose(page,'CONTENU', contenu.trimEnd());
   page = pose(page,'APP', app.trimEnd());

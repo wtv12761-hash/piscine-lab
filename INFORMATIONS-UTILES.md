@@ -36,7 +36,7 @@ versionnés : le dépôt est public et ces documents ne sont pas notre travail.
 
 Les missions C exécutent **18 cas de test** en C 00 et **24** en C 01.
 
-**Suite de vérification, 570 assertions :**
+**Suite de vérification, 603 assertions :**
 
 | Fichier | Assertions | Couvre |
 |---|---|---|
@@ -50,7 +50,7 @@ Les missions C exécutent **18 cas de test** en C 00 et **24** en C 01.
 | `tests/test_regle1.js` | 145 | aucune mission ne reproduit un exercice du sujet |
 | `tests/test_sources.js` | 11 | les pages livrées sont bien celles que produisent les sources |
 
-En complément, `tests/verify_docs.js` exécute **132 contrôles d'audit** : cohérence entre
+En complément, `tests/verify_docs.js` exécute **139 contrôles d'audit** : cohérence entre
 la documentation et le code, invariants de contenu, non-régression de la salle
 d'auto-évaluation, autonomie des pages, liens du hub. Il est lancé automatiquement par
 `run_all.sh`, qui **échoue désormais réellement** quand une de ces vérifications échoue.

@@ -25,7 +25,7 @@ const construit = args => {
 console.log('\n--- les pages livrées correspondent à src/ ---');
 const r = construit(['--verifie']);
 t('node src/build.mjs --verifie ne signale aucun écart', r.code === 0 || r.out.trim().split('\n').slice(-3).join(' | '));
-['shell00.html', 'shell01.html', 'c00.html', 'c01.html'].forEach(p =>
+require('./pages.js').MODULES.forEach(p =>
   t(p + ' est présente à la racine', fs.existsSync(path.join(racine, p)) || 'absente'));
 
 console.log('\n--- la construction refuserait une page cassée ---');

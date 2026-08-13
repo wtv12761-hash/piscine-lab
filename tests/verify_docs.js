@@ -11,7 +11,7 @@ const I=fs.readFileSync('INFORMATIONS-UTILES.md','utf8');
 const docs={HANDOFF:H, CONTEXT:C, INFOS:I};
 
 console.log('\n=== 1. fichiers annoncés vs présents ===');
-const attendus=['index.html','shell00.html','shell01.html','c00.html','c01.html',
+const attendus=[...require('./pages.js').TOUTES,
  'CONTEXT.md','HANDOFF.md','INFORMATIONS-UTILES.md','.gitignore',
  'tests/extract.js','tests/run_all.sh','tests/test_shell_engine.js','tests/test_shell_pipes.js',
  'tests/test_rooms_shell00.js','tests/test_rooms_shell01.js','tests/test_c_engine.js','tests/test_rooms_c.js',
@@ -96,7 +96,7 @@ T('il est lancé par run_all.sh',
   /tests\/test_\*\.js/.test(fs.readFileSync('tests/run_all.sh','utf8'))||'non lancé');
 T('il couvre tout le dépôt, pas une liste écrite à la main',
   require('./confidentialite.js').fichiersDuDepot('.').includes('tests/test_shell_engine.js')||'couverture partielle');
-['index.html','shell00.html','shell01.html','c00.html','c01.html'].forEach(f=>{
+require('./pages.js').TOUTES.forEach(f=>{
   const t=fs.readFileSync(f,'utf8');
   T(f+' : autonome (aucun src/href externe)', !/<script[^>]+src=|<link[^>]+href="http/i.test(t)||'DÉPENDANCE EXTERNE');
 });
@@ -106,7 +106,7 @@ console.log('\n=== 6 bis. non-régression : la salle d\'auto-évaluation ===');
 // un identifiant qui n'existe que dans shell00. Résultat : la salle finale ne se
 // validait jamais ailleurs, et le hub comptait une salle fantôme. Un identifiant
 // de salle écrit en dur dans la couche de rendu est donc désormais une erreur.
-['shell00.html','shell01.html','c00.html','c01.html'].forEach(f=>{
+require('./pages.js').MODULES.forEach(f=>{
   const s=fs.readFileSync(f,'utf8');
   T(f+' : le viva déduit l\'identifiant de la dernière salle',
     /ROOMS\[ROOMS\.length-1\]\.id/.test(s)||'identifiant non déduit');
@@ -124,10 +124,10 @@ const hub=fs.readFileSync('index.html','utf8');
 // Le hub construit ses lignes en JavaScript depuis sa liste de modules : on
 // vérifie donc que chaque page y est déclarée, et non qu'un href littéral
 // figure dans le HTML, ce qui n'a plus de sens depuis la refonte.
-['shell00.html','shell01.html','c00.html','c01.html'].forEach(f=>
+require('./pages.js').MODULES.forEach(f=>
   T('hub déclare '+f, hub.includes("'"+f+"'")||hub.includes('href="'+f+'"')||'module absent du hub'));
 T('hub : un point de reprise existe', /id="reprendre"/.test(hub)||'bouton de reprise absent');
-['shell00.html','shell01.html','c00.html','c01.html'].forEach(f=>
+require('./pages.js').MODULES.forEach(f=>
   T(f+' : retour vers le hub', fs.readFileSync(f,'utf8').includes('href="index.html"')||'pas de retour'));
 
 console.log('\n=== 8. la doc annonce le bon nombre de contrôles ===');

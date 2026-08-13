@@ -90,9 +90,16 @@ function expandSet(str){
 }
 
 /* --------- machine --------- */
+/* État git simulé.
+   Trois listes plutôt qu'un booléen par fichier : c'est exactement la
+   distinction que les étudiants ratent au rendu. Un fichier peut être écrit
+   sans être ajouté, ajouté sans être commité, et commité sans être poussé.
+   Chacune de ces trois marches perd des rendus chaque piscine. */
+const gitNeuf=()=>({indexes:[], commits:[], pousses:0});
+
 function newShell(setup){
   const root=fDir();
-  const sh={root, cwd:[], clock:T0, out:[], env:{}};
+  const sh={root, cwd:[], clock:T0, out:[], env:{}, git:gitNeuf()};
   sh.cwdNode=()=>{ let n=root; for(const p of sh.cwd) n=n.children[p]; return n; };
   if(setup) setup(sh);
   return sh;
@@ -184,7 +191,159 @@ function exec(sh,cmd,a,stdin){
     'commandes simulées : ls, cd, pwd, cat, echo, touch, mkdir, rm, rmdir,\n'+
     'chmod, ln, wc, find, man, clear, export, env,\n'+
     'tr, cut, grep, head, tail, sort, uniq, rev, id.\n'+
+    "outillage de rendu : git, norminette, cc.\n"+
     'redirections > et >> supportées. Tape la commande de la mission.\n');
+
+  /* ---------- outillage du rendu ----------
+     git, norminette et cc ne sont pas des commandes shell comme les autres :
+     ce sont les trois portes par lesquelles un rendu passe ou échoue. Elles
+     sont simulées assez fidèlement pour que les erreurs classiques se
+     produisent vraiment, et pas seulement se lisent.
+     Ce ne sont pas les vrais outils, et la page le dit. */
+
+  case 'git':{
+    const g=sh.git||(sh.git=gitNeuf());
+    const nomsFichiers=()=>Object.keys(cwd.children||{})
+      .filter(n=>(cwd.children[n]||{}).type==='file').sort();
+    const dejaCommites=new Set(g.commits.flatMap(c=>c.fichiers));
+    const sub=a[0];
+
+    if(!sub) return {err:"usage: git <commande>\nles commandes utiles ici : status, add, commit, push, log"};
+
+    if(sub==='status'){
+      const suivis=new Set([...g.indexes, ...dejaCommites]);
+      const nonSuivis=nomsFichiers().filter(n=>!suivis.has(n));
+      const enAvance=g.commits.length-g.pousses;
+      let t='Sur la branche master\n';
+      if(enAvance>0) t+='Votre branche est en avance sur "origin/master" de '+enAvance+' commit(s).\n';
+      if(g.indexes.length){
+        t+='\nModifications qui seront validées :\n';
+        for(const f of [...g.indexes].sort()) t+='\tnouveau fichier : '+f+'\n';
+      }
+      if(nonSuivis.length){
+        t+='\nFichiers non suivis :\n';
+        for(const f of nonSuivis) t+='\t'+f+'\n';
+        t+='\nutilisez "git add <fichier>" pour inclure dans ce qui sera validé\n';
+      }
+      if(!g.indexes.length && !nonSuivis.length && enAvance===0)
+        t+='rien à valider, la copie de travail est propre\n';
+      return O(t);
+    }
+
+    if(sub==='add'){
+      const cibles=a.slice(1);
+      if(!cibles.length) return {err:'Rien de spécifié, rien d’ajouté.\nutilisez "git add ."'};
+      const dispo=nomsFichiers();
+      const ajoutes=[];
+      for(const c of cibles){
+        if(c==='.'||c==='-A'||c==='--all'){ for(const f of dispo) if(!g.indexes.includes(f)&&!dejaCommites.has(f)) { g.indexes.push(f); ajoutes.push(f); } }
+        else if(dispo.includes(c)){ if(!g.indexes.includes(c)){ g.indexes.push(c); ajoutes.push(c); } }
+        else return {err:"fatal: le chemin '"+c+"' ne correspond à aucun fichier"};
+      }
+      return O('');
+    }
+
+    if(sub==='commit'){
+      const iM=a.indexOf('-m');
+      if(iM<0||!a[iM+1])
+        return {err:'Aborting commit due to empty commit message.\nutilisez : git commit -m "un message"'};
+      if(!g.indexes.length)
+        return {err:'Sur la branche master\nrien à valider (utilisez "git add")'};
+      const msg=a[iM+1].replace(/^["']|["']$/g,'');
+      const n=g.indexes.length;
+      g.commits.push({msg, fichiers:[...g.indexes]});
+      g.indexes.length=0;
+      return O('[master '+('0000000'+g.commits.length).slice(-7)+'] '+msg+'\n '+
+        n+' fichier(s) modifié(s)\n');
+    }
+
+    if(sub==='push'){
+      const enAvance=g.commits.length-g.pousses;
+      if(g.indexes.length&&enAvance===0)
+        return {err:'Everything up-to-date\nTes fichiers sont ajoutés mais pas commités : git add ne suffit pas.'};
+      if(enAvance===0) return O('Everything up-to-date\n');
+      g.pousses=g.commits.length;
+      /* Le nom réel du serveur de rendu n’apparaît nulle part : ce dépôt est
+         public, et l’infrastructure interne de l’école n’a pas à y figurer.
+         "origin" est de toute façon le nom que git affiche. */
+      return O('Énumération des objets: '+(enAvance*3)+', fait.\n'+
+        'To origin\n   0000000..'+('0000000'+g.commits.length).slice(-7)+'  master -> master\n');
+    }
+
+    if(sub==='log'){
+      if(!g.commits.length) return {err:"fatal: votre branche actuelle 'master' n’a encore aucun commit"};
+      let t='';
+      for(let i=g.commits.length-1;i>=0;i--){
+        const pousse=(i<g.pousses)?' (poussé)':' (PAS ENCORE POUSSÉ)';
+        t+='commit '+('0000000'+(i+1)).slice(-7)+pousse+'\n\n    '+g.commits[i].msg+'\n\n';
+      }
+      return O(t);
+    }
+
+    return {err:"git: '"+sub+"' n’est pas une commande git simulée ici.\ndisponibles : status, add, commit, push, log"};
+  }
+
+  case 'norminette':{
+    const cible=a.find(x=>!x.startsWith('-'));
+    if(!cible) return {err:'usage: norminette <fichier.c>'};
+    const nd=readTarget(sh,cible);
+    if(!nd) return {err:'norminette: '+cible+': No such file or directory'};
+    if(nd.type==='dir') return {err:'norminette: '+cible+': Is a directory'};
+    if(!/\.[ch]$/.test(cible)) return {err:'norminette: '+cible+': fichier ignoré, seuls .c et .h sont vérifiés'};
+
+    const lignes=nd.content.split('\n');
+    const erreurs=[];
+    /* L'en-tête 42 : norminette le réclame avant tout le reste, et un fichier
+       sans en-tête est refusé même si le code est parfait. */
+    if(!/^\/\* \*{74} \*\/$/.test(lignes[0]||''))
+      erreurs.push('Error: INVALID_HEADER      (line   1): en-tête 42 manquant ou mal formé');
+    lignes.forEach((l,i)=>{
+      if(l.length>80) erreurs.push('Error: LINE_TOO_LONG      (line '+String(i+1).padStart(3)+'): ligne de '+l.length+' colonnes, maximum 80');
+      if(/^ +\S/.test(l)) erreurs.push('Error: SPACE_REPLACE_TAB  (line '+String(i+1).padStart(3)+'): indentation avec des espaces, il faut des tabulations');
+      if(/ $/.test(l)&&l.trim()) erreurs.push('Error: SPC_BEFORE_NL      (line '+String(i+1).padStart(3)+'): espace en fin de ligne');
+    });
+    if(nd.content.includes('\r'))
+      erreurs.push('Error: (fichier): retours chariot Windows (CRLF), il faut des fins de ligne Unix');
+
+    if(!erreurs.length) return O(cible+': OK!\n');
+    return O(cible+': Error!\n'+erreurs.slice(0,8).join('\n')+'\n');
+  }
+
+  case 'cc':
+  case 'gcc':{
+    const sources=a.filter(x=>/\.c$/.test(x));
+    if(!sources.length)
+      return {err:cmd+': fatal error: no input files\n'+
+        'exemple : '+cmd+' -Wall -Wextra -Werror fichier.c -o prog'};
+    for(const s of sources){
+      const nd=readTarget(sh,s);
+      if(!nd) return {err:cmd+': error: '+s+': No such file or directory'};
+    }
+    const manquants=['-Wall','-Wextra','-Werror'].filter(f=>!a.includes(f));
+    let avertissement='';
+    if(manquants.length)
+      avertissement='note: la Moulinette compile avec -Wall -Wextra -Werror. Il te manque : '+
+        manquants.join(' ')+'\n';
+
+    /* Sans main, l’éditeur de liens échoue. C’est LA différence entre un
+       exercice de projet (interdit d’avoir un main) et un exercice
+       d’examen (il en faut un), et le message est le même dans les deux cas. */
+    const aMain=sources.some(s=>{
+      const nd=readTarget(sh,s);
+      return nd && /^[ \t]*int[ \t]+main[ \t]*\(/m.test(nd.content);
+    });
+    if(!aMain&&!a.includes('-c'))
+      return {err:avertissement+'/usr/bin/ld: dans la fonction « _start » :\n'+
+        'undefined reference to `main’\ncollect2: error: ld returned 1 exit status\n'+
+        '→ aucun main dans ce qui est compilé. Pour tester une fonction de projet,\n'+
+        '  écris un main de test à part, ou compile avec -c pour ne pas lier.'};
+
+    const iO=a.indexOf('-o');
+    const sortie=(iO>=0&&a[iO+1])?a[iO+1]:'a.out';
+    const r=resolveDir(sh,sortie.split('/'));
+    if(r&&r.dir) r.dir.children[r.name]=Object.assign(fFile(''),{mtime:sh.clock,mode:0o755});
+    return O(avertissement);
+  }
 
   case 'man':{
     const p=a[0];
@@ -571,8 +730,9 @@ function doFind(sh,a){
 }
 
 function newShellFrom(sh){
-  const clone=JSON.parse(JSON.stringify({root:sh.root,cwd:sh.cwd,clock:sh.clock,env:sh.env||{}}));
-  const s={root:clone.root,cwd:clone.cwd,clock:clone.clock,out:[],env:clone.env};
+  const clone=JSON.parse(JSON.stringify({root:sh.root,cwd:sh.cwd,clock:sh.clock,env:sh.env||{},
+    git:sh.git||gitNeuf()}));
+  const s={root:clone.root,cwd:clone.cwd,clock:clone.clock,out:[],env:clone.env,git:clone.git};
   s.cwdNode=()=>{ let n=s.root; for(const p of s.cwd) n=n.children[p]; return n; };
   return s;
 }

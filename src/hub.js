@@ -18,6 +18,11 @@ const MODULES = [
     desc:"write et l'adresse, le caractère comme nombre, boucles et conditions, boucles imbriquées, extraction de chiffres." },
   { cle:'c01lab_v1', page:'c01.html', nom:'C 01', salles:6, facultatives:[],
     desc:"Adresse et déréférencement, pointeurs multiples, paramètres de sortie, chaînes et zéro final, tableaux." },
+  /* La révision n'est pas un module du cursus : elle couvre l'outillage du
+     rendu et reprend les notions de Shell 00 et C 00. Elle est listée en
+     dernier pour ne pas se confondre avec la progression. */
+  { cle:'revisionlab_v1', page:'revision.html', nom:'Révision', salles:8, facultatives:[],
+    desc:"Le jour de l'examen, le poste de l'école, l'en-tête 42 sous vim, norminette, compiler pour tester, git jusqu'au push, et une reprise de Shell 00 et C 00." },
 ];
 
 function lire(cle){
