@@ -2400,7 +2400,23 @@ steps:[
 
  {k:'mcq',h:'',q:"Ton exercice à un argument reçoit trois arguments. Que doit afficher ton programme ?",
   opts:["Rien du tout","Un simple saut de ligne","Un message d'erreur","Le premier argument"],a:1,
-  why:"Le sujet impose la sortie du cas d'échec, et pour cette famille c'est un saut de ligne seul. Ne rien afficher, ou afficher un message, produit tous deux une différence avec le fichier attendu."}
+  why:"Le sujet impose la sortie du cas d'échec, et pour cette famille c'est un saut de ligne seul. Ne rien afficher, ou afficher un message, produit tous deux une différence avec le fichier attendu."},
+
+ {k:'lesson',h:'Le piège de aff_a et aff_z : deux échecs, deux sorties',b:`
+  <p>Ces deux exercices affichent le premier <code>a</code> (ou <code>z</code>) rencontré dans la chaîne. Ils ont <b>deux</b> cas particuliers, et l'erreur est de croire qu'ils produisent la même sortie.</p>
+  <ul>
+   <li><b>La chaîne ne contient pas la lettre</b> → un simple saut de ligne.</li>
+   <li><b>Le nombre d'arguments n'est pas 1</b> → la lettre, <b>puis</b> un saut de ligne.</li>
+  </ul>
+  <p>Le sujet le montre lui-même, avec <code>cat -e</code> :</p>
+  <p><code>$> ./aff_a "zz sent le poney" | cat -e</code> donne <code>$</code><br>
+     <code>$> ./aff_a | cat -e</code> donne <code>a$</code></p>
+  <p>Deux lignes qui se ressemblent, deux sorties opposées. Traiter les deux cas avec le même code fait échouer la moitié des tests, sur un exercice dont l'algorithme est trivial.</p>
+  <p>Leçon générale : quand un sujet décrit plusieurs cas particuliers, écris-les côte à côte sur ton brouillon <b>avant</b> de coder, et vérifie chacun avec <code>| cat -e</code>.</p>`},
+
+ {k:'mcq',h:'',q:"<code>./aff_a \"bonjour\"</code> : la chaîne ne contient aucun <code>a</code>. Que doit afficher le programme ?",
+  opts:["Rien","Un simple saut de ligne","La lettre a puis un saut de ligne","Un message d'erreur"],a:1,
+  why:"Le sujet distingue les deux cas : chaîne sans la lettre donne un saut de ligne seul, alors qu'un mauvais nombre d'arguments donne la lettre suivie d'un saut de ligne."}
 ]}
 
 ];
