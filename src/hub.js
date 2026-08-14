@@ -21,7 +21,7 @@ const MODULES = [
   /* La révision n'est pas un module du cursus : elle couvre l'outillage du
      rendu et reprend les notions de Shell 00 et C 00. Elle est listée en
      dernier pour ne pas se confondre avec la progression. */
-  { cle:'revisionlab_v1', page:'revision.html', nom:'Révision', salles:11, facultatives:[],
+  { cle:'revisionlab_v1', page:'revision.html', nom:'Révision', salles:13, facultatives:[],
     desc:"Le jour de l'examen, l'outillage du rendu, les arguments de la ligne de commande, le contrat de sortie, et les familles d'exercices de l'exam 00." },
 ];
 

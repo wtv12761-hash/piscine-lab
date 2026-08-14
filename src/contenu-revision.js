@@ -567,30 +567,6 @@ steps:[
   </ul>
   <p>Point commun de la famille : plusieurs de ces énoncés n'autorisent <b>aucune</b> fonction externe, pas même <code>write</code>. Vérifie ce champ avant d'écrire.</p>`},
 
- {k:'code',h:'',
-  brief:"Même forme que la famille 3, sur une autre fonction. Écris <code>ft_compte_lettre</code>, qui renvoie combien de fois le caractère <code>c</code> apparaît dans la chaîne <code>str</code>. Aucun affichage.",
-  sig:'int ft_compte_lettre(char *str, char c);',
-  start:'int\tft_compte_lettre(char *str, char c)\n{\n\t\n}\n',
-  tests:[
-   {label:'"banane", \'a\'', harness:'int main(void){ char s[] = "banane"; return ft_compte_lettre(s, \'a\'); }', expect:'3'},
-   {label:'"xyz", \'a\'', harness:'int main(void){ char s[] = "xyz"; return ft_compte_lettre(s, \'a\'); }', expect:'0'},
-   {label:'"aaa", \'a\'', harness:'int main(void){ char s[] = "aaa"; return ft_compte_lettre(s, \'a\'); }', expect:'3'}],
-  hints:["Un compteur à zéro, une boucle qui avance tant que le caractère lu n'est pas le zéro final.",
-         "La condition d'arrêt s'écrit str[i] != '\\\\0', ou simplement str[i].",
-         "À chaque tour, si str[i] vaut c, on incrémente le compteur. On renvoie le compteur à la fin."]},
-
- {k:'code',h:'',
-  brief:"Même forme que la famille 2, sans les arguments de ligne de commande. Écris <code>ft_decale_un</code>, qui affiche la chaîne reçue en décalant chaque lettre minuscule d'une place, <code>z</code> revenant à <code>a</code>. Les autres caractères ne changent pas. Pas de saut de ligne final.",
-  sig:'void ft_decale_un(char *str);',
-  start:'void\tft_decale_un(char *str)\n{\n\t\n}\n',
-  tests:[
-   {label:'"abc"', harness:'int main(void){ char s[] = "abc"; ft_decale_un(s); return 0; }', expect:'bcd'},
-   {label:'"xyz"', harness:'int main(void){ char s[] = "xyz"; ft_decale_un(s); return 0; }', expect:'yza'},
-   {label:'"a-z!"', harness:'int main(void){ char s[] = "a-z!"; ft_decale_un(s); return 0; }', expect:'b-a!'}],
-  hints:["Parcours la chaîne jusqu'au zéro final, et traite chaque caractère séparément.",
-         "Une lettre minuscule est entre 'a' et 'z'. Seules celles-là bougent.",
-         "Le cas de 'z' se traite à part : au lieu d'ajouter 1, on repart à 'a'."]},
-
  {k:'mcq',h:'',q:"L'énoncé s'appelle <code>ft_countdown</code> et son en-tête dit « Expected files: ft_countdown.c » sans donner de prototype. Que rends-tu ?",
   opts:["Une fonction sans main","Un programme avec un main","Les deux, pour être sûr","Une fonction et un main dans deux fichiers"],a:1,
   why:"Le préfixe ft_ ne décide de rien. C'est l'énoncé qui dit s'il attend une fonction, en donnant un prototype, ou un programme. Sans prototype, c'est un programme, et il lui faut un main."},
@@ -598,6 +574,176 @@ steps:[
  {k:'mcq',h:'',q:"Où places-tu ton fichier pour un exercice nommé <code>rev_print</code> ?",
   opts:["rendu/rev_print.c","rendu/rev_print/rev_print.c","rendu/exam00/rev_print.c","subjects/rev_print/"],a:1,
   why:"Le dossier porte le nom de l'exercice, et le fichier celui donné par le champ « Expected files » de l'énoncé. Les deux doivent correspondre exactement, sinon le correcteur ne trouve rien à compiler."}
+]}
+
+,
+
+/* ------------------------------------------------------------------ v11
+   Ici on drille les VRAIS exercices du pool, avec leurs vrais noms et leurs
+   vrais contrats. C'est une exception assumée à la règle 1, et elle tient
+   parce que ces exercices ne sont pas des rendus : ils se font en direct, en
+   quatre heures, sans réseau, et personne ne les défend en soutenance.
+   Les quatre exercices du pool qui portent aussi le nom d'un exercice de
+   projet restent listés sans solution, dans la salle précédente. */
+{
+id:'v11', file:'drill-fixe', tag:'exam', title:'Drill : sortie fixe',
+sub:"Les vrais exercices du pool qui ne prennent aucun argument.",
+steps:[
+ {k:'lesson',h:'Pourquoi ceux-là, et comment les traiter',b:`
+  <p>Les exercices ci-dessous sont ceux du pool réel, avec leurs noms et leurs contrats exacts. Le tirage est aléatoire, donc l'intérêt n'est pas de les apprendre par cœur : c'est que la <b>forme</b> devienne automatique, pour que le jour J tu passes tes minutes sur ce qui varie.</p>
+  <p>Dans l'examen ce sont des <b>programmes</b> : ton code va dans <code>int main(void)</code>. Ici tu écris le corps sous forme de fonction, parce que l'interpréteur du lab appelle lui-même un main. C'est le même code, à l'enveloppe près.</p>
+  <p>Vérifie toujours le contrat de saut de ligne avant d'écrire.</p>`},
+
+ {k:'code',h:'',
+  brief:"<b>only_a</b> — le sujet dit : « Write a program that displays a 'a' character on the standard output. » Aucune mention de saut de ligne, donc <b>aucun</b> saut de ligne. Écris le corps.",
+  sig:'void only_a(void);',
+  start:'void\tonly_a(void)\n{\n\t\n}\n',
+  tests:[{label:'sortie exacte', harness:'int main(void){ only_a(); return 0; }', expect:'a'}],
+  hints:["Un seul write suffit.",
+         "write veut une adresse. Une chaîne littérale en est déjà une.",
+         "write(1, \"a\", 1); et rien d'autre."]},
+
+ {k:'code',h:'',
+  brief:"<b>hello</b> — le sujet dit : « displays <code>Hello World!</code> followed by a newline ». La phrase est là, donc le saut de ligne est obligatoire. Attention à la majuscule de Hello et de World, et au point d'exclamation.",
+  sig:'void hello(void);',
+  start:'void\thello(void)\n{\n\t\n}\n',
+  tests:[{label:'sortie exacte', harness:'int main(void){ hello(); return 0; }', expect:'Hello World!\n'}],
+  hints:["Un seul write, avec la chaîne complète, saut de ligne compris.",
+         "Le saut de ligne s'écrit \\\\n dans une chaîne.",
+         "Compte les caractères de \"Hello World!\\\\n\" pour le troisième argument de write."]},
+
+ {k:'code',h:'',
+  brief:"<b>ft_countdown</b> — « displays all digits in descending order, followed by a newline ». Le préfixe <code>ft_</code> ne trompe pas : le sujet dit <i>program</i>, pas <i>function</i>. Saut de ligne obligatoire.",
+  sig:'void ft_countdown(void);',
+  start:'void\tft_countdown(void)\n{\n\t\n}\n',
+  tests:[{label:'9876543210 puis saut de ligne', harness:'int main(void){ ft_countdown(); return 0; }', expect:'9876543210\n'}],
+  hints:["Une boucle qui part du caractère '9' et descend.",
+         "Tu descends, donc la condition se compare à '0' et le signe s'inverse.",
+         "Après la boucle, un write du saut de ligne."]},
+
+ {k:'code',h:'',
+  brief:"<b>maff_alpha</b> — l'alphabet avec une lettre sur deux en majuscule, en commençant par une minuscule, suivi d'un saut de ligne. La sortie attendue commence par <code>aBcDeF</code>.",
+  sig:'void maff_alpha(void);',
+  start:'void\tmaff_alpha(void)\n{\n\t\n}\n',
+  tests:[{label:'alphabet alterné', harness:'int main(void){ maff_alpha(); return 0; }', expect:'aBcDeFgHiJkLmNoPqRsTuVwXyZ\n'}],
+  hints:["Parcours l'alphabet en minuscules comme d'habitude, et décide au passage si la lettre doit être affichée en majuscule.",
+         "Une lettre sur deux : compte les tours et regarde si le compteur est pair ou impair.",
+         "Passer de minuscule à majuscule, c'est soustraire la différence entre 'a' et 'A'."]},
+
+ {k:'code',h:'',
+  brief:"<b>maff_revalpha</b> — le même, mais l'alphabet à l'envers. La sortie commence par <code>zYxW</code>, donc la première lettre est encore une minuscule.",
+  sig:'void maff_revalpha(void);',
+  start:'void\tmaff_revalpha(void)\n{\n\t\n}\n',
+  tests:[{label:'alphabet inversé alterné', harness:'int main(void){ maff_revalpha(); return 0; }', expect:'zYxWvUtSrQpOnMlKjIhGfEdCbA\n'}],
+  hints:["Même structure que le précédent, en partant de 'z' et en descendant.",
+         "Le sens de la comparaison change avec le sens du parcours.",
+         "L'alternance repart de la minuscule sur la première lettre affichée."]},
+
+ {k:'code',h:'',
+  brief:"<b>fizzbuzz</b> — les nombres de 1 à 100, un par ligne. Multiples de 3 : <code>fizz</code>. Multiples de 5 : <code>buzz</code>. Multiples des deux : <code>fizzbuzz</code>. Piège : tester 3 et 5 séparément avant le cas commun donne un résultat faux.",
+  sig:'void fizzbuzz(void);',
+  start:'void\tfizzbuzz(void)\n{\n\t\n}\n',
+  tests:[{label:'1 à 100', harness:'int main(void){ fizzbuzz(); return 0; }',
+    expect:"1\n2\nfizz\n4\nbuzz\nfizz\n7\n8\nfizz\nbuzz\n11\nfizz\n13\n14\nfizzbuzz\n16\n17\nfizz\n19\nbuzz\nfizz\n22\n23\nfizz\nbuzz\n26\nfizz\n28\n29\nfizzbuzz\n31\n32\nfizz\n34\nbuzz\nfizz\n37\n38\nfizz\nbuzz\n41\nfizz\n43\n44\nfizzbuzz\n46\n47\nfizz\n49\nbuzz\nfizz\n52\n53\nfizz\nbuzz\n56\nfizz\n58\n59\nfizzbuzz\n61\n62\nfizz\n64\nbuzz\nfizz\n67\n68\nfizz\nbuzz\n71\nfizz\n73\n74\nfizzbuzz\n76\n77\nfizz\n79\nbuzz\nfizz\n82\n83\nfizz\nbuzz\n86\nfizz\n88\n89\nfizzbuzz\n91\n92\nfizz\n94\nbuzz\nfizz\n97\n98\nfizz\nbuzz\n"}],
+  hints:["Teste le cas des deux multiples EN PREMIER, sinon il ne sera jamais atteint.",
+         "Un nombre à deux chiffres ne s'affiche pas avec un seul write : il faut sortir chaque chiffre.",
+         "Pour un nombre inférieur à 100 : le chiffre des dizaines est n / 10, celui des unités n % 10. N'affiche la dizaine que si elle n'est pas nulle."]}
+]},
+
+/* ------------------------------------------------------------------ v12 */
+{
+id:'v12', file:'drill-arg', tag:'exam', title:'Drill : traiter une chaîne',
+sub:"Les vrais exercices du pool qui reçoivent leur donnée en argument.",
+steps:[
+ {k:'lesson',h:'L\'enveloppe est toujours la même',b:`
+  <p>Toute cette famille a la même enveloppe. Apprends-la une fois, écris-la sans réfléchir le jour J, et garde ta tête pour la transformation.</p>
+  <p>Structure d'un exercice à un argument :</p>
+  <ul>
+   <li>si <code>argc != 2</code>, afficher <b>uniquement un saut de ligne</b>, puis sortir ;</li>
+   <li>sinon, parcourir <code>argv[1]</code> jusqu'au zéro final en transformant ;</li>
+   <li>afficher un saut de ligne à la fin.</li>
+  </ul>
+  <p>Dans les missions ci-dessous, l'interpréteur du lab ne gère pas la ligne de commande. Tu écris donc <b>la transformation</b>, qui est la seule partie qui change d'un exercice à l'autre. L'enveloppe, tu la connais maintenant.</p>`},
+
+ {k:'code',h:'',
+  brief:"<b>ulstr</b> — inverse la casse de chaque lettre, les autres caractères ne bougent pas. Écris la transformation, sans saut de ligne final (il appartient à l'enveloppe).",
+  sig:'void ulstr(char *str);',
+  start:'void\tulstr(char *str)\n{\n\t\n}\n',
+  tests:[
+   {label:'"Bonjour"', harness:'int main(void){ char s[] = "Bonjour"; ulstr(s); return 0; }', expect:'bONJOUR'},
+   {label:'"aB c-D"', harness:'int main(void){ char s[] = "aB c-D"; ulstr(s); return 0; }', expect:'Ab C-d'},
+   {label:'"42!"', harness:'int main(void){ char s[] = "42!"; ulstr(s); return 0; }', expect:'42!'}],
+  hints:["Parcours la chaîne jusqu'au zéro final et traite chaque caractère à part.",
+         "Trois cas : minuscule, majuscule, autre chose.",
+         "La distance entre 'a' et 'A' est la même pour toutes les lettres."]},
+
+ {k:'code',h:'',
+  brief:"<b>rot_13</b> — décale chaque lettre de 13 places, en bouclant : <code>z</code> devient <code>m</code>, <code>Z</code> devient <code>M</code>. La casse ne change pas, les autres caractères non plus.",
+  sig:'void rot_13(char *str);',
+  start:'void\trot_13(char *str)\n{\n\t\n}\n',
+  tests:[
+   {label:'"abc"', harness:'int main(void){ char s[] = "abc"; rot_13(s); return 0; }', expect:'nop'},
+   {label:'"Hello"', harness:'int main(void){ char s[] = "Hello"; rot_13(s); return 0; }', expect:'Uryyb'},
+   {label:'"xyz-42"', harness:'int main(void){ char s[] = "xyz-42"; rot_13(s); return 0; }', expect:'klm-42'}],
+  hints:["Le décalage se calcule par rapport au début de l'alphabet, pas par rapport à zéro.",
+         "Ramène la lettre à un rang entre 0 et 25, ajoute 13, puis reviens dans l'alphabet.",
+         "Le reste de la division par 26 fait le bouclage tout seul."]},
+
+ {k:'code',h:'',
+  brief:"<b>rotone</b> — le même, avec un décalage d'une seule place : <code>z</code> devient <code>a</code>, <code>Z</code> devient <code>A</code>.",
+  sig:'void rotone(char *str);',
+  start:'void\trotone(char *str)\n{\n\t\n}\n',
+  tests:[
+   {label:'"abc"', harness:'int main(void){ char s[] = "abc"; rotone(s); return 0; }', expect:'bcd'},
+   {label:'"Zoo"', harness:'int main(void){ char s[] = "Zoo"; rotone(s); return 0; }', expect:'App'},
+   {label:'"z-Z!"', harness:'int main(void){ char s[] = "z-Z!"; rotone(s); return 0; }', expect:'a-A!'}],
+  hints:["Même squelette que rot_13, avec 1 au lieu de 13.",
+         "Seuls 'z' et 'Z' demandent un traitement particulier.",
+         "Le reste de la division par 26 marche aussi ici."]},
+
+ {k:'code',h:'',
+  brief:"<b>rev_print</b> — affiche la chaîne à l'envers. Écris la transformation.",
+  sig:'void rev_print(char *str);',
+  start:'void\trev_print(char *str)\n{\n\t\n}\n',
+  tests:[
+   {label:'"abc"', harness:'int main(void){ char s[] = "abc"; rev_print(s); return 0; }', expect:'cba'},
+   {label:'"42 Lausanne"', harness:'int main(void){ char s[] = "42 Lausanne"; rev_print(s); return 0; }', expect:'ennasuaL 24'},
+   {label:'un seul caractère', harness:'int main(void){ char s[] = "x"; rev_print(s); return 0; }', expect:'x'}],
+  hints:["Il faut d'abord savoir où la chaîne se termine.",
+         "Une première boucle avance jusqu'au zéro final et compte.",
+         "Une seconde boucle repart de la fin et descend jusqu'à l'indice 0."]},
+
+ {k:'code',h:'',
+  brief:"<b>repeat_alpha</b> — répète chaque lettre autant de fois que son rang dans l'alphabet : <code>a</code> une fois, <code>b</code> deux fois, <code>e</code> cinq fois. La casse est conservée, les autres caractères sont affichés une seule fois.",
+  sig:'void repeat_alpha(char *str);',
+  start:'void\trepeat_alpha(char *str)\n{\n\t\n}\n',
+  tests:[
+   {label:'"abc"', harness:'int main(void){ char s[] = "abc"; repeat_alpha(s); return 0; }', expect:'abbccc'},
+   {label:'"Hello"', harness:'int main(void){ char s[] = "Hello"; repeat_alpha(s); return 0; }', expect:'Hhhhhhhheeeeellllllllllllooooooooooooooo'},
+   {label:'"a-b"', harness:'int main(void){ char s[] = "a-b"; repeat_alpha(s); return 0; }', expect:'a-bb'}],
+  hints:["Le rang d'une lettre se calcule par rapport au début de son alphabet, majuscules et minuscules séparément.",
+         "'a' est de rang 1, pas 0 : il faut ajouter un.",
+         "Une boucle interne affiche la lettre le bon nombre de fois."]},
+
+ {k:'code',h:'',
+  brief:"<b>first_word</b> — affiche le premier mot de la chaîne. Un mot est délimité par des espaces ou des tabulations. La chaîne peut commencer par des espaces.",
+  sig:'void first_word(char *str);',
+  start:'void\tfirst_word(char *str)\n{\n\t\n}\n',
+  tests:[
+   {label:'"bonjour le monde"', harness:'int main(void){ char s[] = "bonjour le monde"; first_word(s); return 0; }', expect:'bonjour'},
+   {label:'espaces au début', harness:'int main(void){ char s[] = "   salut toi"; first_word(s); return 0; }', expect:'salut'},
+   {label:'un seul mot', harness:'int main(void){ char s[] = "seul"; first_word(s); return 0; }', expect:'seul'}],
+  hints:["Deux phases : sauter ce qui précède le mot, puis afficher jusqu'au séparateur suivant.",
+         "Les séparateurs sont l'espace et la tabulation, qui s'écrit \\\\t.",
+         "La seconde boucle s'arrête aussi sur le zéro final, sinon un mot en fin de chaîne déborde."]},
+
+ {k:'mcq',h:'',q:"Dans <code>rot_13</code>, pourquoi <code>c + 13</code> ne suffit pas ?",
+  opts:["Parce que c est un char","Parce qu'au-delà de 'z' on sort de l'alphabet","Parce qu'il faut 26","Parce que write n'accepte pas"],a:1,
+  why:"Pour 'z', ajouter 13 donne un caractère qui n'est plus une lettre. Il faut ramener la lettre à un rang entre 0 et 25, ajouter 13, prendre le reste par 26, puis revenir dans l'alphabet."},
+
+ {k:'mcq',h:'',q:"Ton exercice à un argument reçoit trois arguments. Que doit afficher ton programme ?",
+  opts:["Rien du tout","Un simple saut de ligne","Un message d'erreur","Le premier argument"],a:1,
+  why:"Le sujet impose la sortie du cas d'échec, et pour cette famille c'est un saut de ligne seul. Ne rien afficher, ou afficher un message, produit tous deux une différence avec le fichier attendu."}
 ]}
 
 ];
