@@ -443,8 +443,14 @@ function exec(sh,cmd,a,stdin){
   }
 
   case 'echo':{
-    const s=a.join(' ');
-    return O(s+'\n');
+    /* -n supprime le saut de ligne final. C'est la seule façon de fabriquer
+       un fichier dont la taille en octets est exactement celle demandée, et
+       le sujet de Shell 00 en fait un exercice à part entière. Sans cette
+       option, echo écrivait « -n » comme un mot ordinaire : le fichier
+       pesait quatre octets de trop et la mission devenait insoluble. */
+    let mots=a, sautDeLigne=true;
+    while(mots.length && mots[0]==='-n'){ sautDeLigne=false; mots=mots.slice(1); }
+    return O(mots.join(' ')+(sautDeLigne?'\n':''));
   }
 
   case 'wc':{
