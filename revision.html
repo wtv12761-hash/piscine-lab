@@ -1814,7 +1814,7 @@ steps:[
   why:"Chaque ligne de l'en-tête fait exactement 80 colonnes. Un login plus long pousse la fin de ligne au-delà. Le plugin recalcule le remplissage ; le clavier, non."},
 
  {k:'input',h:'',q:"Dans vim, quelle commande insère l'en-tête 42 ? Écris la commande, deux-points compris.",
-  attendu:[':stdheader','stdheader',':stdheader<cr>'],
+  a:[':stdheader','stdheader',':stdheader<cr>'],
   why:"<code>:Stdheader</code>, ou la touche F1 en mode normal. Ce n'est pas Ctrl + H : celui-là appartient à Emacs."}
 ]},
 
@@ -1957,7 +1957,7 @@ steps:[
   why:"« En avance » veut dire que tu as des enregistrements que le serveur n'a pas. Tant qu'ils ne sont pas poussés, ils ne sont pas rendus."},
 
  {k:'input',h:'',q:"Quelle commande, seule, te dit s'il te reste quelque chose à rendre ?",
-  attendu:['git status','status'],
+  a:['git status','status'],
   why:"git status résume les trois marches d'un coup : non suivi, ajouté, et en avance sur le serveur."}
 ]},
 

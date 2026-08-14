@@ -277,6 +277,82 @@ t('chaque module du build est listé dans le hub', () => {
   return manquants.length === 0 || 'pages construites mais absentes du hub : ' + manquants.join(', ');
 });
 
+// ------------------------- chaque étape porte les champs que son rendu lit
+
+console.log('');
+console.log('contrat des étapes');
+
+/* Une étape input écrite avec `attendu:` au lieu de `a:` a été livrée en
+   production. Rien ne l'a vue : la page se construit, la syntaxe est valide,
+   la suite reste verte, et l'étape casse seulement quand quelqu'un clique sur
+   « valider », parce que le rendu fait `s.a.some(...)` sur un undefined.
+   Ce contrôle relit chaque étape et vérifie qu'elle a de quoi être rendue. */
+const CONTRAT = {
+  lesson: ['b'],
+  mcq: ['q', 'opts', 'a', 'why'],
+  input: ['q', 'why'],       // plus `a` ou `accept`, vérifié à part
+  answer: ['q'],
+  bug: ['q', 'opts', 'a'],
+  code: ['brief', 'sig', 'start', 'tests'],
+  term: ['brief', 'check', 'verif'],
+  viva: [],
+  /* Widgets visuels rendus par widgets.js : ils portent leurs propres champs
+     et n'ont pas de contrat commun avec les étapes interactives. */
+  bits: [],
+  inode: [],
+  ascii: [],
+  mem: [],
+};
+
+function chargeRooms(fichier) {
+  const fs = require('fs');
+  const path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, '..', 'src', fichier), 'utf8');
+  // Les fonctions setup/check référencent des helpers du moteur ; elles ne
+  // sont pas appelées ici, seulement déclarées, donc des souches suffisent.
+  const f = new Function(
+    'lookup', 'fFile', 'fDir', 'fLink', 'newShell', 'runC',
+    src + '\nreturn {MODULE: typeof MODULE!=="undefined"?MODULE:null, ROOMS: typeof ROOMS!=="undefined"?ROOMS:[]};'
+  );
+  const stub = () => undefined;
+  return f(stub, stub, stub, stub, stub, stub);
+}
+
+const CONTENUS = ['contenu-shell00.js', 'contenu-shell01.js', 'contenu-c00.js', 'contenu-c01.js', 'contenu-revision.js'];
+
+for (const fichier of CONTENUS) {
+  t(fichier + ' : chaque étape a les champs de son type', () => {
+    let mod;
+    try { mod = chargeRooms(fichier); }
+    catch (e) { return 'illisible : ' + e.message; }
+
+    const manques = [];
+    for (const salle of mod.ROOMS) {
+      for (const [i, s] of (salle.steps || []).entries()) {
+        const requis = CONTRAT[s.k];
+        if (requis === undefined) { manques.push(`${salle.id}[${i}] type inconnu « ${s.k} »`); continue; }
+        for (const champ of requis) {
+          if (s[champ] === undefined) manques.push(`${salle.id}[${i}] ${s.k} : champ « ${champ} » manquant`);
+        }
+        if (s.k === 'input' && s.a === undefined && typeof s.accept !== 'function') {
+          manques.push(`${salle.id}[${i}] input : ni « a » ni « accept »`);
+        }
+        if (s.k === 'input' && s.a !== undefined && (!Array.isArray(s.a) || s.a.length === 0)) {
+          manques.push(`${salle.id}[${i}] input : « a » doit être un tableau non vide`);
+        }
+        if (s.k === 'mcq' || s.k === 'bug') {
+          if (!Array.isArray(s.opts) || s.opts.length < 2) manques.push(`${salle.id}[${i}] ${s.k} : moins de deux options`);
+          else if (typeof s.a !== 'number' || s.a < 0 || s.a >= s.opts.length) manques.push(`${salle.id}[${i}] ${s.k} : index de réponse hors des options`);
+        }
+        if (s.k === 'code' && (!Array.isArray(s.tests) || s.tests.length === 0)) {
+          manques.push(`${salle.id}[${i}] code : aucun test`);
+        }
+      }
+    }
+    return manques.length === 0 || manques.slice(0, 6).join(' ; ');
+  });
+}
+
 console.log('');
 console.log('=========================');
 console.log(' pass ' + pass + '   fail ' + fail);
