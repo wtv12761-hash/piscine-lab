@@ -479,7 +479,7 @@ Lancé automatiquement par `run_all.sh`. Il vérifie que **la documentation ne m
 **Si tu changes une structure, la doc doit suivre, sinon cet audit échoue.** C'est
 volontaire : trois documents qui divergent du code sont pires que pas de documentation.
 
-État actuel : **603 assertions de test + 139 contrôles d'audit**, tous verts.
+État actuel : **605 assertions de test + 139 contrôles d'audit**, tous verts.
 Ces deux chiffres sont vérifiés par la machine : `verify_docs.js` compare le nombre de
 contrôles annoncé au nombre réel, et `run_all.sh` fait la même chose pour les assertions.
 La version précédente annonçait 116 contrôles pour 117 réels, sans que rien ne le voie.

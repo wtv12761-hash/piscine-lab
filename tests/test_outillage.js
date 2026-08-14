@@ -238,6 +238,45 @@ t('les moteurs shell et C ne partagent aucun symbole de premier niveau', () => {
   return collisions.length === 0 || 'symboles déclarés dans les deux moteurs : ' + collisions.join(', ');
 });
 
+// ------------------------------------------ le hub compte juste ses salles
+
+console.log('');
+console.log('cohérence hub / contenu');
+
+t('chaque module annonce dans le hub le nombre de salles qu il contient', () => {
+  /* Le hub a déjà compté une salle fantôme : un identifiant déclaré d un côté
+     et absent de l autre. Le nombre est écrit à la main dans hub.js, donc il
+     dérive dès qu on ajoute ou retire une salle sans y penser. */
+  const fs = require('fs');
+  const path = require('path');
+  const src = path.join(__dirname, '..', 'src');
+  const hub = fs.readFileSync(path.join(src, 'hub.js'), 'utf8');
+  const build = fs.readFileSync(path.join(src, 'build.mjs'), 'utf8');
+
+  const declares = [...hub.matchAll(/page:'([^']+)'[^}]*?salles:(\d+)/g)].map(m => [m[1], +m[2]]);
+  if (declares.length === 0) return 'aucun module lisible dans hub.js';
+  const modules = [...build.matchAll(/page:'([^']+)',\s*contenu:'([^']+)'/g)];
+
+  const ecarts = [];
+  for (const [page, annonce] of declares) {
+    const mod = modules.find(m => m[1] === page);
+    if (!mod) { ecarts.push(page + ' absent de build.mjs'); continue; }
+    const contenu = fs.readFileSync(path.join(src, mod[2]), 'utf8');
+    const reel = (contenu.match(/^id:'[a-z0-9]+',/gm) || []).length;
+    if (reel !== annonce) ecarts.push(`${page} : hub annonce ${annonce}, contenu en a ${reel}`);
+  }
+  return ecarts.length === 0 || ecarts.join(' ; ');
+});
+
+t('chaque module du build est listé dans le hub', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const src = path.join(__dirname, '..', 'src');
+  const hub = fs.readFileSync(path.join(src, 'hub.js'), 'utf8');
+  const manquants = require('./pages.js').MODULES.filter(p => !hub.includes("'" + p + "'"));
+  return manquants.length === 0 || 'pages construites mais absentes du hub : ' + manquants.join(', ');
+});
+
 console.log('');
 console.log('=========================');
 console.log(' pass ' + pass + '   fail ' + fail);

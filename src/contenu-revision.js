@@ -417,6 +417,189 @@ steps:[
   why:"Sans le <code>&amp;</code>, la valeur du caractère est interprétée comme une adresse mémoire. write va lire n'importe où, et au mieux n'affiche rien."}
 ]}
 
+,
+
+/* ------------------------------------------------------------------ v8
+   La compétence qui manque : ni C 00 ni C 01 ne parlent des arguments de la
+   ligne de commande, et une bonne moitié du pool de l'exam 00 en dépend. */
+{
+id:'v8', file:'arguments', tag:'exam', title:'Lire les arguments',
+sub:"La moitié des exercices d'examen reçoivent leur donnée par la ligne de commande.",
+steps:[
+ {k:'lesson',h:'main peut recevoir des choses',b:`
+  <p>Jusqu'ici tu as écrit <code>int main(void)</code>. La vraie signature complète est :</p>
+  <p><code>int main(int argc, char **argv)</code></p>
+  <ul>
+   <li><code>argc</code> est le <b>nombre</b> d'éléments sur la ligne de commande.</li>
+   <li><code>argv</code> est le <b>tableau</b> de ces éléments, chacun étant une chaîne.</li>
+  </ul>
+  <p>Le piège de départ : <b><code>argv[0]</code> est le nom du programme lui-même</b>. Le premier argument que l'utilisateur tape est donc <code>argv[1]</code>.</p>
+  <p>Si tu lances <code>./prog bonjour</code> :</p>
+  <ul>
+   <li><code>argc</code> vaut <b>2</b></li>
+   <li><code>argv[0]</code> vaut <code>"./prog"</code></li>
+   <li><code>argv[1]</code> vaut <code>"bonjour"</code></li>
+  </ul>
+  <p>Donc « le programme reçoit un argument » se teste par <code>argc == 2</code>, pas <code>argc == 1</code>.</p>`},
+
+ {k:'lesson',h:'Une chaîne est une adresse, et elle finit par zéro',b:`
+  <p><code>argv[1]</code> est un <code>char *</code> : l'adresse du premier caractère. Tu l'avais vu en C 01.</p>
+  <p>Pour la parcourir, tu avances tant que le caractère lu n'est pas le zéro final :</p>
+  <p><code>while (str[i] != '\\0')</code></p>
+  <p>Ce zéro n'est pas le caractère <code>'0'</code>. C'est la valeur 0, celle qui marque la fin. Confondre les deux fait boucler à l'infini ou s'arrêter au premier chiffre zéro rencontré.</p>`},
+
+ {k:'lesson',h:'Le mauvais nombre d\'arguments a une sortie IMPOSÉE',b:`
+  <p>C'est l'erreur mécanique la plus coûteuse de l'examen, et elle n'a rien à voir avec ton algorithme.</p>
+  <p>Quand le nombre d'arguments ne correspond pas, le sujet dit toujours quoi afficher. Ce n'est <b>jamais</b> le silence, et <b>jamais</b> un message d'erreur que tu inventes.</p>
+  <ul>
+   <li><b>Cas le plus courant :</b> afficher <b>un simple saut de ligne</b>, et rien d'autre.</li>
+   <li><b>Cas particulier</b> de certains exercices : afficher une lettre précise suivie d'un saut de ligne.</li>
+  </ul>
+  <p>Les deux façons de se tromper : ne rien afficher du tout, ou écrire quelque chose comme <code>Usage: ./prog</code>. Les deux échouent, parce que le correcteur compare ta sortie à un fichier attendu qui contient exactement un saut de ligne.</p>
+  <p>Lis cette phrase du sujet <b>avant</b> d'écrire l'algorithme, et traite-la en premier dans le code.</p>`},
+
+ {k:'mcq',h:'',q:"Tu lances <code>./prog salut</code>. Que vaut <code>argc</code> ?",
+  opts:["0","1","2","3"],a:2,
+  why:"argv[0] est le nom du programme, argv[1] est « salut ». Il y a donc deux éléments, et argc vaut 2."},
+
+ {k:'mcq',h:'',q:"Le sujet dit : « si le nombre d'arguments n'est pas 1, afficher un saut de ligne ». Quelle condition écris-tu ?",
+  opts:["if (argc != 1)","if (argc != 2)","if (argv[1] == 0)","if (argc == 0)"],a:1,
+  why:"« Un argument » du point de vue de l'utilisateur veut dire argc == 2, puisque argv[0] est le nom du programme. Donc le cas d'échec est argc != 2."},
+
+ {k:'bug',h:'',
+  brief:"Ce programme doit afficher son argument, ou un simple saut de ligne s'il n'en reçoit pas exactement un. Il échoue à l'examen. Pourquoi ?",
+  code:'int\tmain(int argc, char **argv)\n{\n\tint\ti;\n\n\ti = 0;\n\tif (argc != 2)\n\t\treturn (0);\n\twhile (argv[1][i])\n\t\twrite(1, &argv[1][i++], 1);\n\twrite(1, "\\n", 1);\n\treturn (0);\n}\n',
+  q:"Qu'est-ce qui cloche ?",
+  opts:["La boucle est fausse","Sans argument il n'affiche rien, alors qu'un saut de ligne est exigé","argv[1] devrait être argv[0]","Il manque le zéro final"],a:1,
+  why:"L'algorithme est bon. Le <code>return (0)</code> sec ne produit aucune sortie, alors que le fichier attendu contient un saut de ligne. Le correcteur voit une différence et refuse."}
+]},
+
+/* ------------------------------------------------------------------ v9 */
+{
+id:'v9', file:'contrat', tag:'exam', title:'Le contrat de sortie',
+sub:"Un saut de ligne en trop est un échec sec. Voici comment savoir, à coup sûr.",
+steps:[
+ {k:'lesson',h:'Une phrase du sujet décide de tout',b:`
+  <p>Le correcteur compare ta sortie au fichier attendu <b>octet par octet</b>, avec <code>diff</code>. Un saut de ligne en trop ou en moins est donc un échec aussi net qu'un mauvais résultat.</p>
+  <p>La règle est mécanique, et elle tient dans une phrase à repérer dans l'énoncé :</p>
+  <p><b>« followed by a newline »</b> (suivi d'un saut de ligne).</p>
+  <ul>
+   <li>Cette phrase est <b>présente</b> → ta sortie doit finir par <code>\\n</code>.</li>
+   <li>Cette phrase est <b>absente</b> → ta sortie ne doit <b>pas</b> finir par <code>\\n</code>.</li>
+  </ul>
+  <p>Deuxième indice, encore plus fiable : le bloc <b>Examples</b> de l'énoncé. Quand il est affiché avec <code>cat -e</code>, un <code>$</code> en fin de ligne signale le saut de ligne. Pas de <code>$</code>, pas de saut de ligne.</p>
+  <p>Deux exercices du pool illustrent le piège : l'un affiche les chiffres dans un sens <b>avec</b> saut de ligne final, l'autre dans l'autre sens <b>sans</b>. Même forme, contrat inverse. Ne déduis jamais le contrat de l'exercice voisin.</p>`},
+
+ {k:'lesson',h:'Vérifier, en deux commandes',b:`
+  <p>Après avoir compilé, tu contrôles ta sortie avant de rendre :</p>
+  <ul>
+   <li><code>./prog | cat -e</code> affiche un <code>$</code> à chaque fin de ligne. Tu vois immédiatement s'il y en a un de trop, ou aucun.</li>
+   <li><code>./prog | wc -c</code> donne le nombre exact d'octets. C'est le contrôle qui ne ment pas.</li>
+  </ul>
+  <p>Prends l'habitude de faire les deux systématiquement. Ça coûte cinq secondes et ça attrape l'erreur la plus fréquente de l'examen.</p>`},
+
+ {k:'term',h:'Mission : voir le saut de ligne',
+  goal:'distinguer deux fichiers qui se ressemblent',
+  brief:"Le dossier contient <code>avec</code> et <code>sans</code>. Ils affichent la même chose, mais un seul finit par un saut de ligne. Trouve lequel, avec <code>cat -e</code> puis <code>wc -c</code>.",
+  setup:sh=>{ sh.root.children['avec']=fFile('OK\n'); sh.root.children['sans']=fFile('OK'); },
+  terminal:'MISSION · CONTRAT', dossier:'bac', raccourcis:['cat -e avec','cat -e sans','wc -c avec','wc -c sans'],
+  verif:{type:'sortie', filtre:/^cat -e sans/, attendu:'OK'},
+  check:sh=>true,
+  hints:["cat -e marque la fin de ligne par un dollar.",
+         "wc -c compte les octets : 3 contre 2.",
+         "cat -e sans"]},
+
+ {k:'mcq',h:'',q:"L'énoncé décrit la sortie sans jamais écrire « followed by a newline », et son bloc Examples n'a aucun <code>$</code>. Que fais-tu ?",
+  opts:["Tu ajoutes un \\n par sécurité","Tu n'ajoutes pas de \\n","Tu ajoutes un espace","Ça n'a pas d'importance"],a:1,
+  why:"Le correcteur compare octet par octet. Un \\n « par sécurité » crée une différence avec le fichier attendu, et l'exercice est refusé alors que la logique était juste."},
+
+ {k:'mcq',h:'',q:"Quelle commande te donne le nombre exact d'octets produits par ton programme ?",
+  opts:["./prog | wc -l","./prog | wc -c","./prog | cat","ls -l prog"],a:1,
+  why:"<code>wc -c</code> compte les octets. <code>wc -l</code> compte les lignes, et <code>ls -l</code> donne la taille du programme, pas de sa sortie."}
+]},
+
+/* ------------------------------------------------------------------ v10 */
+{
+id:'v10', file:'pool', tag:'exam', title:'Ce qui peut tomber',
+sub:"Le pool réel de l'exam 00, ses familles de forme, et de l'entraînement sur les mêmes formes.",
+steps:[
+ {k:'lesson',h:'Comment lire cette liste',b:`
+  <p>Les exercices de l'exam 00 sont tirés au hasard dans une banque publique et stable, documentée par des dizaines de dépôts d'entraînement. Les connaître ne remplace pas savoir les écrire : tu passeras quatre heures sans réseau, et l'exercice tiré ne sera pas celui que tu auras appris par cœur.</p>
+  <p>Ce qui sert vraiment, c'est de reconnaître la <b>famille</b> à laquelle appartient l'exercice tiré, parce que la famille décide de la structure du code et du contrat de sortie.</p>
+  <p>Les noms ci-dessous sont ceux que <code>examshell</code> utilise. Le dossier de rendu porte exactement ce nom.</p>`},
+
+ {k:'lesson',h:'Famille 1 : afficher quelque chose de fixe',b:`
+  <p>Aucun argument, sortie constante. Un <code>main</code>, un ou deux <code>write</code>, parfois une boucle.</p>
+  <ul>
+   <li><code>only_a</code>, <code>only_z</code> — un seul caractère, <b>sans</b> saut de ligne.</li>
+   <li><code>hello</code> — <code>Hello World!</code> <b>avec</b> saut de ligne.</li>
+   <li><code>ft_countdown</code> — les chiffres en ordre décroissant, <b>avec</b> saut de ligne. Attention : le préfixe <code>ft_</code> ne veut pas dire fonction, l'énoncé demande un programme.</li>
+   <li><code>maff_alpha</code>, <code>maff_revalpha</code> — l'alphabet en alternant minuscules et majuscules, <b>avec</b> saut de ligne.</li>
+   <li><code>fizzbuzz</code> — de 1 à 100, un par ligne, avec fizz, buzz et fizzbuzz.</li>
+  </ul>
+  <p>C'est la famille la plus proche de ce que tu sais déjà faire. Le seul vrai risque y est le contrat de saut de ligne.</p>`},
+
+ {k:'lesson',h:'Famille 2 : traiter une chaîne reçue en argument',b:`
+  <p>Un argument, une boucle sur ses caractères, une sortie transformée, <b>avec</b> saut de ligne. Et toujours le cas du mauvais nombre d'arguments à traiter en premier.</p>
+  <ul>
+   <li><code>rev_print</code> — la chaîne à l'envers.</li>
+   <li><code>ulstr</code> — inverse la casse de chaque lettre.</li>
+   <li><code>rot_13</code>, <code>rotone</code> — décale chaque lettre de 13 places, ou d'une seule, en bouclant de z à a.</li>
+   <li><code>repeat_alpha</code> — répète chaque lettre autant de fois que son rang dans l'alphabet.</li>
+   <li><code>first_word</code> — le premier mot, les mots étant séparés par des espaces ou des tabulations.</li>
+   <li><code>aff_a</code>, <code>aff_z</code> — le premier caractère cherché dans la chaîne. Ces deux-là ont un cas d'échec particulier, lis-le attentivement.</li>
+   <li><code>search_and_replace</code> — trois arguments : la chaîne, la lettre cherchée, la lettre de remplacement.</li>
+   <li><code>aff_first_param</code>, <code>aff_last_param</code> — affiche le premier, ou le dernier, des arguments reçus.</li>
+  </ul>
+  <p>Toute cette famille repose sur la salle précédente : <code>argc</code>, <code>argv</code>, et le parcours d'une chaîne jusqu'au zéro final.</p>`},
+
+ {k:'lesson',h:'Famille 3 : écrire une fonction sur des pointeurs',b:`
+  <p>Pas de <code>main</code> à rendre : l'énoncé donne un prototype et tu écris la fonction seule. C'est du C 01 : adresses, chaînes, zéro final.</p>
+  <p>Plusieurs d'entre elles portent le nom d'exercices que tu dois rendre dans tes projets. Ce lab ne les résout pas, par principe : ce sont tes rendus. Elles apparaissent ici pour que tu saches qu'elles peuvent tomber, et pour que tu reconnaisses leur forme.</p>
+  <ul>
+   <li>Mesurer la longueur d'une chaîne, et renvoyer un nombre.</li>
+   <li>Afficher une chaîne reçue par son adresse.</li>
+   <li>Copier une chaîne dans une autre, zéro final compris, et renvoyer la destination.</li>
+   <li>Échanger le contenu de deux entiers dont on reçoit les adresses.</li>
+   <li>Inverser une chaîne <b>sur place</b> et renvoyer son paramètre.</li>
+   <li>Comparer deux chaînes et renvoyer un entier signé.</li>
+   <li>Convertir une chaîne en entier.</li>
+  </ul>
+  <p>Point commun de la famille : plusieurs de ces énoncés n'autorisent <b>aucune</b> fonction externe, pas même <code>write</code>. Vérifie ce champ avant d'écrire.</p>`},
+
+ {k:'code',h:'',
+  brief:"Même forme que la famille 3, sur une autre fonction. Écris <code>ft_compte_lettre</code>, qui renvoie combien de fois le caractère <code>c</code> apparaît dans la chaîne <code>str</code>. Aucun affichage.",
+  sig:'int ft_compte_lettre(char *str, char c);',
+  start:'int\tft_compte_lettre(char *str, char c)\n{\n\t\n}\n',
+  tests:[
+   {label:'"banane", \'a\'', harness:'int main(void){ char s[] = "banane"; return ft_compte_lettre(s, \'a\'); }', expect:'3'},
+   {label:'"xyz", \'a\'', harness:'int main(void){ char s[] = "xyz"; return ft_compte_lettre(s, \'a\'); }', expect:'0'},
+   {label:'"aaa", \'a\'', harness:'int main(void){ char s[] = "aaa"; return ft_compte_lettre(s, \'a\'); }', expect:'3'}],
+  hints:["Un compteur à zéro, une boucle qui avance tant que le caractère lu n'est pas le zéro final.",
+         "La condition d'arrêt s'écrit str[i] != '\\\\0', ou simplement str[i].",
+         "À chaque tour, si str[i] vaut c, on incrémente le compteur. On renvoie le compteur à la fin."]},
+
+ {k:'code',h:'',
+  brief:"Même forme que la famille 2, sans les arguments de ligne de commande. Écris <code>ft_decale_un</code>, qui affiche la chaîne reçue en décalant chaque lettre minuscule d'une place, <code>z</code> revenant à <code>a</code>. Les autres caractères ne changent pas. Pas de saut de ligne final.",
+  sig:'void ft_decale_un(char *str);',
+  start:'void\tft_decale_un(char *str)\n{\n\t\n}\n',
+  tests:[
+   {label:'"abc"', harness:'int main(void){ char s[] = "abc"; ft_decale_un(s); return 0; }', expect:'bcd'},
+   {label:'"xyz"', harness:'int main(void){ char s[] = "xyz"; ft_decale_un(s); return 0; }', expect:'yza'},
+   {label:'"a-z!"', harness:'int main(void){ char s[] = "a-z!"; ft_decale_un(s); return 0; }', expect:'b-a!'}],
+  hints:["Parcours la chaîne jusqu'au zéro final, et traite chaque caractère séparément.",
+         "Une lettre minuscule est entre 'a' et 'z'. Seules celles-là bougent.",
+         "Le cas de 'z' se traite à part : au lieu d'ajouter 1, on repart à 'a'."]},
+
+ {k:'mcq',h:'',q:"L'énoncé s'appelle <code>ft_countdown</code> et son en-tête dit « Expected files: ft_countdown.c » sans donner de prototype. Que rends-tu ?",
+  opts:["Une fonction sans main","Un programme avec un main","Les deux, pour être sûr","Une fonction et un main dans deux fichiers"],a:1,
+  why:"Le préfixe ft_ ne décide de rien. C'est l'énoncé qui dit s'il attend une fonction, en donnant un prototype, ou un programme. Sans prototype, c'est un programme, et il lui faut un main."},
+
+ {k:'mcq',h:'',q:"Où places-tu ton fichier pour un exercice nommé <code>rev_print</code> ?",
+  opts:["rendu/rev_print.c","rendu/rev_print/rev_print.c","rendu/exam00/rev_print.c","subjects/rev_print/"],a:1,
+  why:"Le dossier porte le nom de l'exercice, et le fichier celui donné par le champ « Expected files » de l'énoncé. Les deux doivent correspondre exactement, sinon le correcteur ne trouve rien à compiler."}
+]}
+
 ];
 
 const VIVA=[
