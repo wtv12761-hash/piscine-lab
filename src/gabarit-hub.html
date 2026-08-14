@@ -47,8 +47,21 @@ a.lsrow{text-decoration:none}
 
   <div class="panneau">
     <div>
-      <div class="t">Sauvegarde</div>
-      <div class="s">La progression vit dans ce navigateur, sur ce domaine. Elle survit aux mises à jour du site, mais pas à un changement d'appareil ni à un nettoyage. Dans chaque module, le bloc « Sauvegarde manuelle » donne un code à copier et à recoller ailleurs.</div>
+      <div class="t">Sauvegarde de tout</div>
+      <div class="s">Un seul code pour <b>tous les modules à la fois</b>. La progression vit dans ce navigateur, sur ce domaine : elle survit aux mises à jour du site, mais pas à un changement d'appareil ni à un nettoyage. Chaque module garde en plus son propre code, pour n'en transporter qu'un.</div>
+    </div>
+    <div class="actions">
+      <button class="btn ghost" id="expTout" type="button">copier</button>
+      <button class="btn ghost" id="impTout" type="button">restaurer</button>
+    </div>
+  </div>
+
+  <div id="ioZone" class="hidden" style="margin-top:10px">
+    <textarea id="ioTexte" class="io" spellcheck="false" aria-label="code de sauvegarde de tous les modules"></textarea>
+    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center">
+      <button class="btn" id="ioGo" type="button">appliquer</button>
+      <button class="btn ghost" id="ioFermer" type="button">fermer</button>
+      <span id="ioMsg" style="font-size:.79rem;color:var(--dim)"></span>
     </div>
   </div>
 

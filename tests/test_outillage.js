@@ -353,6 +353,71 @@ for (const fichier of CONTENUS) {
   });
 }
 
+// ------------------------------- sauvegarde de tous les modules, depuis le hub
+
+console.log('');
+console.log('sauvegarde globale du hub');
+
+function apiSauvegarde(etats, modules) {
+  const fs = require('fs');
+  const path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'hub.js'), 'utf8');
+  const debut = src.indexOf('function encoderTout');
+  const fin = src.indexOf('function brancherSauvegarde');
+  if (debut < 0 || fin < 0 || fin <= debut) throw new Error('encoderTout/decoderTout introuvables dans hub.js');
+  const f = new Function('lire', 'MODULES', 'btoa', 'atob', 'escape', 'unescape',
+    src.slice(debut, fin) + '\nreturn {encoderTout, decoderTout};');
+  return f(
+    k => etats[k] || null, modules,
+    s => Buffer.from(s, 'binary').toString('base64'),
+    s => Buffer.from(s, 'base64').toString('binary'),
+    global.escape, global.unescape
+  );
+}
+
+const MODS = [{ cle: 'a_v1' }, { cle: 'b_v1' }, { cle: 'c_v1' }];
+const ETATS = { a_v1: { rooms: { r1: { cleared: true } }, srs: {} }, b_v1: { rooms: { s1: { cleared: true } } } };
+
+t('un code global se relit à l identique', () => {
+  const api = apiSauvegarde(ETATS, MODS);
+  const rt = api.decoderTout(api.encoderTout());
+  return JSON.stringify(rt) === JSON.stringify(ETATS) || 'aller-retour altéré : ' + JSON.stringify(rt).slice(0, 120);
+});
+
+t('il ne contient que les modules qui ont une progression', () => {
+  const api = apiSauvegarde(ETATS, MODS);
+  const rt = api.decoderTout(api.encoderTout());
+  return !('c_v1' in rt) || 'un module sans progression a été embarqué';
+});
+
+t('le code d un seul module est refusé avec un message utile', () => {
+  /* Le format d'un module est {x,r,s,k,l,h}. Sans champ `t`, il n'y a aucun
+     moyen de deviner à quel module il appartient : mieux vaut le dire que
+     restaurer au hasard. */
+  const api = apiSauvegarde(ETATS, MODS);
+  const isole = Buffer.from(JSON.stringify({ x: 0, r: { r1: {} }, s: {} }), 'binary').toString('base64');
+  try { api.decoderTout(isole); return 'accepté alors qu il vient d un seul module'; }
+  catch (e) { return /un seul module/.test(e.message) || 'message peu clair : ' + e.message; }
+});
+
+t('un code illisible est refusé sans planter', () => {
+  const api = apiSauvegarde(ETATS, MODS);
+  for (const mauvais of ['', '   ', 'nimportequoi!!', 'YWJj']) {
+    try { api.decoderTout(mauvais); return 'accepté : ' + JSON.stringify(mauvais); }
+    catch (e) { if (!e.message) return 'erreur sans message pour ' + JSON.stringify(mauvais); }
+  }
+  return true;
+});
+
+t('le hub expose les commandes de sauvegarde dans sa page', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  const manques = ['expTout', 'impTout', 'ioZone', 'ioTexte', 'ioGo', 'ioFermer', 'ioMsg']
+    .filter(id => !html.includes('id="' + id + '"'));
+  return manques.length === 0 || 'identifiants absents de index.html : ' + manques.join(', ');
+});
+
 console.log('');
 console.log('=========================');
 console.log(' pass ' + pass + '   fail ' + fail);

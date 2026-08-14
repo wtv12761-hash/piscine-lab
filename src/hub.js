@@ -105,4 +105,106 @@ function peindre(){
   document.getElementById('reprendreT').textContent =
     repriseCible ? 'Reprendre où tu en étais' : 'Rien en cours';
 }
+
+/* ==========================================================================
+   Sauvegarde de tous les modules en un seul code
+
+   Chaque module sait déjà exporter le sien. Les transporter un par un veut
+   dire quatre ou cinq codes à recopier sans en oublier un, et c'est la
+   sauvegarde qu'on ne fait pas.
+
+   Le hub lit la progression des modules et n'y touche pas, sauf ici : une
+   restauration écrit, par définition. C'est la seule écriture du fichier, et
+   elle n'a lieu que sur un clic explicite.
+
+   Format : {v:2, t:{cle_du_module: état, ...}}. Le marqueur de version
+   permet de reconnaître un code de module isolé, qui n'a pas de champ `t`,
+   et de le refuser avec un message utile plutôt qu'une erreur d'analyse.
+   ========================================================================== */
+const ecrire = (cle, valeur) => {
+  try { if (window.localStorage) localStorage.setItem(cle, JSON.stringify(valeur)); return true; }
+  catch (e) { return false; }
+};
+
+function encoderTout(){
+  const tout = {};
+  for (const m of MODULES) {
+    const etat = lire(m.cle);
+    if (etat) tout[m.cle] = etat;
+  }
+  const json = JSON.stringify({ v: 2, t: tout });
+  return btoa(unescape(encodeURIComponent(json))).replace(/=+$/, '');
+}
+
+function decoderTout(code){
+  const c = code.trim().replace(/\s+/g, '');
+  if (!c) throw new Error('code vide');
+  const pad = '='.repeat((4 - c.length % 4) % 4);
+  let o;
+  try { o = JSON.parse(decodeURIComponent(escape(atob(c + pad)))); }
+  catch (e) { throw new Error('ce n’est pas un code de sauvegarde'); }
+  if (o && o.r && !o.t)
+    throw new Error('ceci est le code d’un seul module. Colle-le dans la page de ce module, pas ici');
+  if (!o || typeof o.t !== 'object' || o.t === null)
+    throw new Error('structure inattendue');
+  return o.t;
+}
+
+function brancherSauvegarde(){
+  const zone = document.getElementById('ioZone');
+  const texte = document.getElementById('ioTexte');
+  const msg = document.getElementById('ioMsg');
+  if (!zone || !texte || !msg) return;
+
+  const ouvrir = mode => {
+    zone.classList.remove('hidden');
+    msg.textContent = ''; msg.style.color = 'var(--dim)';
+    document.getElementById('ioGo').classList.toggle('hidden', mode === 'export');
+    if (mode === 'export') {
+      const connus = MODULES.filter(m => lire(m.cle)).length;
+      if (connus === 0) {
+        texte.value = '';
+        msg.textContent = 'rien à sauvegarder pour le moment';
+        return;
+      }
+      texte.value = encoderTout(); texte.select();
+      const combien = connus + (connus > 1 ? ' modules' : ' module');
+      if (navigator.clipboard) navigator.clipboard.writeText(texte.value)
+        .then(() => { msg.textContent = 'copié, ' + combien + ' dedans'; })
+        .catch(() => { msg.textContent = combien + ' dedans, sélectionne tout et copie à la main'; });
+      else msg.textContent = combien + ' dedans, sélectionne tout et copie à la main';
+    } else {
+      texte.value = ''; texte.placeholder = 'colle ici le code de sauvegarde de tous les modules'; texte.focus();
+    }
+    zone.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  };
+
+  document.getElementById('expTout').onclick = () => ouvrir('export');
+  document.getElementById('impTout').onclick = () => ouvrir('import');
+  document.getElementById('ioFermer').onclick = () => zone.classList.add('hidden');
+  document.getElementById('ioGo').onclick = () => {
+    try {
+      const tout = decoderTout(texte.value);
+      const connus = new Set(MODULES.map(m => m.cle));
+      let ecrits = 0, ignores = 0;
+      for (const [cle, etat] of Object.entries(tout)) {
+        // Un code peut venir d'une version qui avait d'autres modules. On
+        // n'écrit que des clés qu'on connaît, plutôt que de déverser
+        // n'importe quoi dans le stockage du navigateur.
+        if (!connus.has(cle)) { ignores++; continue; }
+        if (etat && typeof etat === 'object' && ecrire(cle, etat)) ecrits++;
+      }
+      if (ecrits === 0) throw new Error('aucun module reconnu dans ce code');
+      peindre();
+      msg.textContent = ecrits + (ecrits > 1 ? ' modules restaurés' : ' module restauré')
+        + (ignores ? ', ' + ignores + ' inconnu(s) ignoré(s)' : '');
+      msg.style.color = 'var(--ok)';
+    } catch (e) {
+      msg.textContent = e.message || String(e);
+      msg.style.color = 'var(--ko)';
+    }
+  };
+}
+
 peindre();
+brancherSauvegarde();

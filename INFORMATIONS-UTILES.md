@@ -36,7 +36,7 @@ versionnés : le dépôt est public et ces documents ne sont pas notre travail.
 
 Les missions C exécutent **18 cas de test** en C 00 et **24** en C 01.
 
-**Suite de vérification, 610 assertions :**
+**Suite de vérification, 615 assertions :**
 
 | Fichier | Assertions | Couvre |
 |---|---|---|
